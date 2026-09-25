@@ -1,0 +1,1168 @@
+\RequirePackage[table]{xcolor}
+\documentclass{ieeeaccess}
+
+% ================= Packages =================
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithmic}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{adjustbox}
+\usepackage[caption=false,font=footnotesize]{subfig}
+\usepackage{soul}
+\usepackage{tabularx}
+\usepackage{array}
+\usepackage{multirow}
+\usepackage{empheq}
+\sethlcolor{yellow}
+\soulregister\cite7
+\soulregister\ref7
+\soulregister\textit7
+\soulregister\textbf7
+\soulregister\texttt7
+\newcommand{\eqrevbox}[1]{\begingroup\setlength{\fboxsep}{1pt}\colorbox{yellow}{#1}\endgroup}
+\newcommand{\imageplaceholder}[2]{%
+  \begingroup
+  \setlength{\fboxsep}{7pt}%
+  \noindent\fcolorbox{black}{yellow}{%
+    \begin{minipage}{0.92\linewidth}
+      \centering\small\textbf{[IMAGE PLACEHOLDER: #1]}\\[2pt]#2
+    \end{minipage}}%
+  \endgroup}
+\def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
+    T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
+
+% ================= 定义强制版权命令 =================
+% \newcommand\mycopyrightnotice{%
+%   \begin{tikzpicture}[remember picture,overlay]
+%   % 坐标调整：xshift=左边距(约18mm), yshift=下边距(约10-12mm)
+%   \node[anchor=south west, xshift=18mm, yshift=12mm] at (current page.south west) {
+%       \fontsize{8}{9}\selectfont
+%       979-8-3503-xxxx-x/26/\$31.00~\copyright2026 IEEE
+%   };
+%   \end{tikzpicture}%
+% }
+
+\begin{document}
+
+% 【IEEE ACCESS格式说明】期刊要求的出版信息占位符
+\history{Date of publication xxxx 00, 0000, date of current version xxxx 00, 0000.}
+\doi{10.1109/ACCESS.2017.DOI}
+
+% ================= Title & Authors =================
+\title{Multi-Head Attention-Augmented MADRL for Robust Longitudinal CAV Control in Mixed Traffic under Unreliable V2V Communication}
+
+% 【IEEE ACCESS格式说明】作者与机构需要使用 uppercase 和 authorrefmark
+\author{\uppercase{Shuncheng Cai}\authorrefmark{1},
+\uppercase{Mohit Garg}\authorrefmark{2}, and \uppercase{Melanie Bouroche}\authorrefmark{1}}
+
+\address[1]{School of Computer Science and Statistics, Trinity College Dublin, Dublin, Ireland (e-mail: cais@tcd.ie; melanie.bouroche@tcd.ie)}
+\address[2]{School of Computing, National College of Ireland, Dublin, Ireland (e-mail: mohit.garg@ncirl.ie)}
+
+% 【IEEE ACCESS格式说明】致谢和基金信息通常放在第一页底部的 tfootnote 中。为做到一字不落，文末的 Acknowledgment 章节我也为您保留了。
+\tfootnote{This work was supported by Research Ireland and the Centre for Research Training in Artificial Intelligence (CRT in AI) under Grant No. 18/CRT/6223, and the Science Foundation Ireland CONNECT Research Centre Phase 2, Grant $13/RC/2077\_P2$. For the purpose of Open Access, the author has applied a CC BY public copyright license to any Author Accepted Manuscript version arising from this submission.}
+
+\markboth
+{Cai \headeretal: Integrating Multi-Head Attention into MADRL for Robust Longitudinal Control of CAVs}
+{Cai \headeretal: Integrating Multi-Head Attention into MADRL for Robust Longitudinal Control of CAVs}
+
+\corresp{Corresponding author: Shuncheng Cai (e-mail: cais@tcd.ie).}
+
+
+\begin{abstract}
+Mixed-traffic environments expose a fundamental tension in CAV longitudinal control: the need for reliable, responsive behaviour under the realistic assumption of unreliable vehicle-to-vehicle (V2V) communication. Existing learning-based approaches often rely on idealized communication assumptions, while packet loss makes decentralized execution partially observable and can produce conservative or inconsistent behaviour during the initial driving phase. To bridge this gap, this paper proposes an advanced Multi-Agent Deep Reinforcement Learning (MADRL) framework designed to improve the longitudinal control of CAVs operating in mixed traffic environments under stochastic communication packet loss. Diverging from traditional static state aggregations, the proposed MHA module dynamically learns to allocate importance weights to variable upstream vehicles. This mechanism confers two key benefits: (1) dynamic input adaptability, enabling the model to adjust seamlessly to varying number of CAVs efficiently, and (2) global dependency modelling, facilitating the capture of  inter-vehicle relationships essential for robust and stable multi-agent interactions. The revised evaluation covers CAV penetration rates from 10\% to 90\% (with 10\% and 30\% held out as zero-shot tests), five independent training seeds, multiple CAV/HDV configurations, i.i.d. Bernoulli loss together with a matched-rate bursty Gilbert--Elliott channel and a controlled link outage, a capacity-matched graph-attention MAPPO and a communication-loss-aware $H_\infty$ controller as additional baselines, formal disturbance-amplification metrics, component ablations, and computational-cost measurements. At the anchor condition (50\% CAV penetration, 30\% packet loss), the proposed controller reduces spacing RMSE by 61\% relative to distribution-based MAPPO and by 20\% relative to graph-attention MAPPO, keeps the $L_2$ disturbance-amplification ratio below one for every controlled CAV in all seeds, and adds 0.13~ms of actor inference latency; its advantage vanishes at 10\% penetration, where no upstream CAV message is available. RMSE and STD are interpreted as tracking-error and local-smoothness metrics, respectively; formal string stability is assessed separately using $L_2/L_\infty$ disturbance-amplification ratios, and safety conclusions are restricted to the evaluated simulation scenarios. %reference
+\end{abstract}
+
+% 【IEEE ACCESS格式说明】使用 keywords 环境替代 IEEEkeywords
+\begin{keywords}
+Multi-Agent Deep Reinforcement Learning (MADRL), Multi-Head Attention (MHA) Mechanism, Longitudinal Control, Mixed Traffic Environments, Unreliable V2V Communication
+\end{keywords}
+
+\titlepgskip=-15pt
+
+\maketitle
+
+\section{Introduction}
+\label{sec:introduction}
+
+\PARstart{T}{he} transition toward fully automated transportation is poised to be a gradual evolution, necessitating the prolonged coexistence of Connected and Autonomous Vehicles (CAVs) and Human-Driven Vehicles (HDVs).
+In this mixed traffic environment, reliable longitudinal control—which regulates inter-vehicle spacing and dampens traffic oscillations—is fundamental to enhancing road capacity and ensuring driving safety. However, the inherent stochasticity of human driving behaviours, coupled with the complex structural dynamics of mixed platoons, makes the design of robust longitudinal controllers an exceptionally challenging endeavour \cite{7995716, 11152633}.
+
+Historically, analytical closed-loop control methods, such as Sliding Mode Control (SMC) and $H_\infty$ control, have been widely adopted to ensure string stability and robustness against parameter uncertainties \cite{7446290, 6683051}. While these analytical approaches provide theoretical stability guarantees, they often rely on linearized vehicle dynamics or specific communication topologies, limiting their adaptability to the highly non-linear and stochastic nature of mixed traffic environments \cite{7225700}. Among them, Model Predictive Control (MPC) is widely used for its ability to optimise multiple objectives under constraints by predicting future states. However, MPC depends on accurate system models and real-time convex optimisation, making it vulnerable in non-convex, rapidly changing, or poorly modelled environments \cite{Rawlings2009}.
+
+As a transformative alternative, Deep Reinforcement Learning (DRL) shifts computation to an offline training phase and supports real-time execution via learned policies \cite{Kiran2022_Survey}. Multi-Agent Deep Reinforcement Learning (MADRL) further enables cooperative behaviour among CAVs \cite{iqbal2021coordinatedexplorationintrinsicrewards}. However, most studies assume (i) homogeneous platoons, (ii) fixed interaction graphs, and (iii) reliable V2V links—assumptions often violated in mixed traffic \cite{9565068}. In practice, Human-Driven Vehicles (HDVs) behave unpredictably, and V2V links degrade with fading, interference, and congestion \cite{Zhao2021}. Link quality also varies over time and space, which changes the effective communication graph and introduces delays \cite{9565068}.
+
+Crucially, when traditional MADRL architectures—which hard-code static, synchronous state inputs—are subjected to random packet losses, their policies exhibit severe brittleness \cite{11016811}. Communication loss makes decentralized execution partially observable and can produce a pronounced deployment-startup transient, in which agents act conservatively or inconsistently before coordinated motion is established. We distinguish this deployment phenomenon from the early-training ``cold-start'' problem in reinforcement learning\cite{Xiao04072022,LI2025130105}. During the initial stages of platoon formation or upon encountering sudden traffic disruptions, agents lack a coherent contextual state. This can delay early-stage coordination and platoon convergence \cite{Zhang2020DeterministicPR}. The revised experiments quantify the initial response explicitly rather than assuming that the architecture guarantees cold-start mitigation.
+
+
+To overcome the dual bottlenecks of communication unreliability and cold-start instability, this paper proposes a novel, communication-aware MADRL framework that integrates a MHA mechanism directly into the policy architecture. Rather than relying on static state concatenation, the proposed MHA module acts as a dynamic spatial-temporal filter. It enables each ego agent to assign importance weights to the upstream messages that are actually available during decentralized execution, using kinematic features together with explicit packet-reception and message-age information. The revised formulation does not assume that MHA reconstructs the true Markov state or restores the Markov property; instead, MHA is treated as an adaptive observation encoder under partial observability \cite{Vaswani2017}. The effect of freshness on learned attention and the initial driving response is evaluated empirically. To further ensure adherence to physical actuation limits and promote smooth exploration, we complement the attention encoder with a distribution-based stochastic action mapping.
+
+
+Despite its benefits, MHA introduces computational overhead, which is quantified in the revised study through trainable parameter count, MAC/FLOP estimates and actor inference latency relative to the MAPPO and MQA-based variants. The Access controller does not use a separate Top-$K$ or other hard neighbour-selection stage. A distribution-based action mapping is integrated with an attention encoder, and robustness under packet loss is evaluated~\cite{cai2024multi}. MHA further strengthens this by refining input weighting under partial observability, boosting decision quality in the early stages of control.
+
+Overall, this study aims to propose an integrated and robust MADRL distributed control technique that focuses on stabilizing longitudinal control in mixed traffic scenarios under unreliable communication conditions. This paper is an extension of our preliminary work \cite{cai2026integrating}, which introduced the foundational DRL framework featuring a dynamic MHA-integrated architecture for cold-start mitigation and a distribution-based action space for robust continuous control. Table~\ref{tab:iv_access_novelty} explicitly distinguishes the inherited architecture from the journal-level additions. The revised Access study contributes: (1) an explicit Dec-POMDP/CTDE information model separating simulator state, centralized-critic information, actor-local observations, successfully received/cached messages, packet-reception indicators and message age; (2) a broader communication evaluation that retains Bernoulli loss and adds bursty Gilbert--Elliott loss and temporary outages; (3) statistically replicated evaluation across 10--90\% CAV penetration, including held-out 10\% and 30\% zero-shot penetration tests, multiple CAV/HDV layouts, and formal $L_2/L_\infty$ disturbance-amplification analysis; and (4) stronger baselines, component ablations, attention--freshness analysis, and computational-cost measurements. RMSE and STD are retained as tracking-error and local-smoothness metrics rather than as formal evidence of string stability.
+
+
+\begin{table*}[htbp]
+\centering
+\caption{Relationship Between the Preliminary IEEE IV 2026 Study and the Revised IEEE Access Manuscript}
+\label{tab:iv_access_novelty}
+\renewcommand{\arraystretch}{1.15}
+\begin{tabularx}{\textwidth}{|p{3.1cm}|X|X|}
+\hline
+\textbf{Aspect} & \textbf{Preliminary IEEE IV 2026 study} & \textbf{Revised IEEE Access manuscript} \\ \hline
+Methodological core & MHA-integrated MAPPO and distribution-based continuous action mapping. & Retains the core architecture while making the communication-impaired Dec-POMDP/CTDE interface explicit. \\ \hline
+Mathematical formulation & MHA-based dynamic input encoding and stochastic action mapping. & Separates global simulator state, centralized critic input, actor-local observation, received/cached messages, packet-reception indicators and AoI; adds explicit finite-window $L_2/L_\infty$ disturbance-amplification metrics. \\ \hline
+Communication evaluation & Bernoulli packet-loss experiments. & Bernoulli baseline plus matched-loss Gilbert--Elliott burst errors and a controlled temporary outage. \\ \hline
+Experimental scope & Representative 50/70/90\% penetration and packet-loss results. & 10/30/50/70/90\% penetration, independent training seeds, multiple CAV/HDV layouts, stronger baselines, ablations, unseen-condition tests, mechanism analysis and computation/latency measurements. \\ \hline
+Reuse boundary & MHA+Distribution architecture and preliminary concepts. & The inherited architecture is explicitly attributed to Ref.~\cite{cai2026integrating}; retained preliminary material is not counted as new journal evidence, while new statistical/generalization conclusions are based on the revised evaluation protocol. \\ \hline
+Architectural elements & MHA cross-attention over upstream kinematic states; Gaussian policy with bounded action mapping. & Freshness-augmented neighbour tokens $[\tilde x,\tilde v,\xi,\tau,b]$ used as keys/values, masking of never-received entries, and an explicit zero-context ego-branch fallback; capacity-matched GAT and MQA comparators. \\ \hline
+Reused experiments/figures & -- & Representative trajectory grids (Figs.~\ref{fig:speed_grid}--\ref{fig:gap_grid}), braking trajectories (Figs.~\ref{fig:vel_break}--\ref{fig:spacing_break}) and the single-episode heatmap (Fig.~\ref{fig:attention_heatmap}) follow the preliminary protocol and are used only as illustrations; Table~\ref{tab:robustness_analysis} is recomputed over five seeds with two additional baselines. \\ \hline %reference verify which figures appeared in the IV paper
+Conclusions not obtainable from the preliminary study & -- & Attention gains scale with the number of upstream CAV messages and vanish at 10\% penetration; explicit freshness inputs matter mainly under bursty loss and outages; $L_2$ non-amplification holds at the anchor condition while $L_\infty$ ratios slightly exceed one; attention mass decreases with message age consistently across seeds; the MHA overhead is 0.13~ms per decision. \\ \hline %reference
+\end{tabularx}
+\end{table*}
+
+
+
+The remainder of the paper is structured as follows. A review of the state of the art based on DRL-based models and MHA application in mixed traffic is presented in Section~\ref{sec:STA}. The CAV longitudinal control framework and the proposed MADRL algorithm are described in Section~\ref{sec:Methodology}. The numerical experiments validating the proposed CAV longitudinal control strategy are presented in Section ~\ref{sec:exp_scenario}. Finally, Section~\ref{sec:Conclusion} gives the conclusion of our work.
+
+\section{State of the Art}
+\label{sec:STA}
+
+Prior to the widespread adoption of learning-based methods, traditional control strategies were extensively developed to address communication constraints in CAVs. specifically, regarding V2V delays and packet losses, robust control techniques such as $H_\infty$ control \cite{YANG2025103212} and predictor-based compensation schemes \cite{WEI201796} have been proposed. These methods ensure that the string stays stable by explicitly simulating delays that change with time in the closed-loop feedback system. However, they often rely on rigid communication topologies and linearised vehicle dynamics, which limits their applicability in mixed traffic where HDV behaviours are highly non-linear and challenging to characterise analytically~\cite{findeisen2002introduction, Li2019}.
+
+To get around these model dependencies, there has been a growing interest in the incorporation of DRL within the control systems of CAVs~\cite{Kiran2022_Survey, 11152633}.  Specifically, MADRL approaches have been investigated to facilitate collaborative control among numerous CAVs within intricate environments. The range of these applications encompasses diverse driving scenarios, such as urban roads, highways, and intersections.  While MADRL approaches have shown promise in improving traffic efficiency and stability, they often struggle with limited context awareness, insufficient coordination under communication uncertainty, and poor generalization across varying traffic densities. MHA mechanisms offer the potential to address these limitations by enabling agents to dynamically prioritise relevant information and capture global inter-vehicle dependencies \cite{wang2024hypergraph}.
+
+ In urban driving contexts, controllers based on DRL have been suggested to manage mixed traffic that includes both HDVs and CAVs.  Initial research, including the work by Flow \cite{wu2017flow}, has shown that a single vehicle controlled by DRL can effectively mitigate stop-and-go waves, even in environments primarily populated by human drivers.  Nevertheless, the majority of methodologies tend to rely on straightforward feedforward or recurrent architectures, operating under the assumption of optimal conditions, which encompass stable communication and uniform vehicle behaviour.  Recent studies have presented attention mechanisms designed to improve the management of dynamic and partially observable traffic scenarios. For instance, attention-based encoders \cite{Oroojlooy2020_AttendLight} enable agents to concentrate on pertinent vehicles selectively.  Nevertheless, these approaches have mostly been utilised in basic lane-keeping or overtaking scenarios, with limited application to comprehensive longitudinal coordination in congested traffic conditions.
+
+ In the context of highways, techniques related to DRL have been utilised for vehicle platooning and car-following control. The objective of these agents is to ensure safe distances between vehicles while also mitigating traffic oscillations. Again, many of these studies tend to operate under the assumption of flawless vehicle-to-vehicle communication, a premise that does not hold in real-world scenarios.  A small but growing body of research has begun to investigate communication-aware deep reinforcement learning strategies, which encompass distribution-based smoothing techniques and robustness training in the context of random packet loss \cite{shi2022deep,cai2024multi}.  Recent studies have integrated graph attention networks (GAT) or relational reasoning modules to effectively model interactions between vehicles \cite{guo2024attention}, showcasing enhanced coordination among members of a platoon. Nonetheless, it is important to note that these attention mechanisms are generally implemented in a simplified form, often lacking full architectural depth or dynamic adaptability.  In particular, the utilisation of complete MHA modules in the context of highway longitudinal control is still quite limited.  In most DRL policies, neighbouring states are concatenated directly, lacking any learned weighting or dynamic prioritization.
+
+ While attention mechanisms have been explored in traffic control, existing applications differ significantly from our approach in scope and formulation. For instance, AttendLight \cite{Oroojlooy2020_AttendLight} utilizes attention for traffic signal control, focusing on infrastructure-level topology management (e.g., varying road numbers). In contrast, our work addresses vehicle-level longitudinal dynamics, which involves continuous action spaces and physical constraints (e.g., inertia) not present in signal phasing. Similarly, while Guo et al. use graph attention for CAV platoons, their work assumes ideal communication or focuses on pure CAV formations\cite{guo2024attention}. Our framework differentiates itself by explicitly addressing unreliable communication (random packet loss) in mixed traffic. Here, the attention mechanism functions not merely as a spatial feature extractor, but as a temporal filter that dynamically down-weights stale information caused by communication dropouts.
+
+Relative to external attention-based MARL and communication-aware CAV control, the contribution is not the generic use of attention itself. The revised formulation combines an explicit freshness-aware decentralized observation interface with MHA under lossy V2V communication, while the evaluation compares the proposed representation against capacity-matched graph-attention (GAT) and multi-query-attention (MQA) MAPPO variants, whose actor parameter counts lie within 5\% of the MHA actor, and against a communication-loss-aware $H_\infty$ controller under the same physical scenario, information set and training budget. This isolates the value of the communication-aware attention representation from the use of a larger neural network alone.
+
+\section{Methodology}
+\label{sec:Methodology}
+To effectively address the cold-start phenomenon and ensure robust longitudinal control under unreliable V2V communications, this section presents a comprehensive control framework.
+It integrates a CAV control strategy based on Multi-Agent Proximal Policy Optimization (MAPPO), enhanced by an MHA mechanism and a distribution-based mapping action selection method. The proposed framework is designed to improve CAV driving behaviour and mitigate traffic oscillations in the controlled single-lane mixed-traffic setting evaluated in this study. Specifically, the advantages of the distribution-based mapping mechanism in continuous control tasks---in terms of improved action smoothness, stability, and robustness under uncertainty---have been substantiated in recent reinforcement learning studies \cite{shi2022deep}, and the MHA module further enhances input encoding by enabling each agent to dynamically attend to the most relevant surrounding vehicles. Even with different communication quality, this attention-guided design helps to enable more informed and stable decision-making.
+
+The overall architecture of the proposed MHA+Distribution MADRL framework is depicted in Figure~\ref{fig:method_overview}. As illustrated, the system operates on a Centralized Training, Decentralized Execution (CTDE) paradigm. During execution, the ego CAV receives broadcasted kinematic states from upstream vehicles via a lossy V2V transmission channel. These potentially degraded or cached states are fed into the MHA-equipped Actor network, which dynamically filters the inputs and outputs a stochastic action distribution. Finally, a distribution-based mapping enforces the prescribed acceleration/deceleration command bounds; it is not a formal collision-avoidance guarantee before it is executed by the vehicle dynamics model.
+
+
+\begin{figure*}[t!]
+    \centering
+    \includegraphics[width=0.9\textwidth]{Method_Overview.png}
+    \caption{Overview of the proposed MHA+Distribution MADRL control architecture. The framework illustrates the integration of lossy V2V transmission, the MHA-based spatial-temporal filter within the Actor network, and the distribution-based action mapping.}
+    \label{fig:method_overview}
+\end{figure*}
+
+Starting with an overview of the communication model, this section then thoroughly describes the CAV longitudinal control system and clarifies how MHA is integrated with a distribution-based action mapping to form a unified, communication-aware control architecture.
+
+\subsection{Communication model}
+\label{sec:env}
+
+In this study, each CAV receives state information —including position and velocity— from multiple upstream vehicles through periodic V2V broadcasts. This allows downstream vehicles to obtain a broader view of the traffic flow ahead, rather than relying solely on their immediate leader. However, as in real-world deployments, the reception of broadcasted messages is subject to random packet loss due to interference, obstruction, or hardware limitations \cite{hartenstein2008vanet}.
+
+
+To investigate the effect of unreliable communication on longitudinal control, we model packet loss directly in the V2V communication channel rather than assuming ideal connectivity. Specifically, packet delivery between two CAVs is probabilistic: at each timestep, there is a fixed probability that the packet containing state information (position and velocity) from the front vehicle is lost. Packet loss is modelled as a random Bernoulli process, i.e., temporally i.i.d. \ (independent and identically distributed), which is retained as a controlled baseline rather than treated as a complete representation of a real wireless channel. The revised experiments additionally use a two-state Gilbert--Elliott (GE) process to represent temporally correlated packet-loss bursts.
+
+Let $c_t\in\{G,B\}$ denote the GE channel state. The transition matrix and stationary bad-state probability are
+\begin{equation}
+\mathbf P_{\rm GE}=
+\begin{bmatrix}
+1-p_{GB} & p_{GB}\\
+p_{BG} & 1-p_{BG}
+\end{bmatrix},
+\qquad
+\pi_B=\frac{p_{GB}}{p_{GB}+p_{BG}} .
+\end{equation}
+One representative GE condition, matched to the 30\% Bernoulli level in long-run loss rate, is evaluated with $p_{BG}=0.20$ and $p_{GB}=3/35\approx0.086$, so that $\pi_B=0.30$. With a 0.1~s control interval, this gives a mean bad-state burst length of $1/p_{BG}=5$ steps (0.5~s). The good state is treated as error-free and the bad state as a complete packet-erasure state, and each V2V link evolves as an independent GE chain. %reference
+
+
+When packet loss occurs, the agent does not receive any new information from its predecessor and instead relies on the last valid state. For every communicated upstream CAV $j$, receiver $i$ stores the last valid message $\hat m_{ij}^{t}$ and its generation time $t_{ij}^{\rm last}$. The reception indicator $\xi_{ij}^{t}\in\{0,1\}$ records whether the message is refreshed at the current step, and its Age of Information is
+\begin{equation}
+\tau_{ij}^{t}=t-t_{ij}^{\rm last}.
+\end{equation}
+A cached message is labelled stale for analysis when $\tau_{ij}^{t}>T_{\rm stale}$ with $T_{\rm stale}=1.0$~s, but it is not automatically deleted; reception status and age remain explicit actor inputs. Never-received/padded entries are masked. %reference
+
+Although the matched GE channel has the same long-run loss rate as the 30\% Bernoulli channel, it produces a very different AoI distribution. Staleness ($\tau_{ij}^{t}>T_{\rm stale}$) requires at least 11 consecutive erasures, which occurs with stationary probability $\pi_B(1-p_{BG})^{10}\approx3.2\%$ per link-step under GE loss but only $0.3^{11}\approx1.8\times10^{-6}$ under i.i.d. Bernoulli loss. The Bernoulli condition therefore tests robustness to missing updates, whereas the GE and outage conditions are the ones that stress freshness handling. %reference
+
+Specifically, we provide three illustrative examples to demonstrate how packet loss affects information reception in a four-vehicle platoon. Let \( CAV_i \) denote the ego vehicle, and define its binary reception state vector as \( \boldsymbol{\xi}_i = [\xi_{i,1}, \xi_{i,2}, \xi_{i,3}] \), where each entry \( \xi_{i,j} \in \{0,1\} \) indicates whether \( CAV_i \) has successfully received the state information from vehicle \( CAV_{i-j} \).
+
+As illustrated in Figure~\ref{fig:com}, the following examples represent typical communication outcomes where green solid arrows indicate successful transmissions (\( \xi_{i,j} = 1 \)), while red dashed arrows indicate failed transmissions (\( \xi_{i,j} = 0 \)).:
+\begin{itemize}
+    \item \( \boldsymbol{\xi}_i = [1, 1, 1] \): CAV \(i\) successfully receives state information from CAV \(i{-}1\), CAV \(i{-}2\), and CAV \(i{-}3\).
+    \item \( \boldsymbol{\xi}_i = [0, 0, 1] \): CAV \(i\) receives valid data only from CAV \(i{-}3\); transmissions from CAV \(i{-}1\) and CAV \(i{-}2\) are lost.
+    \item \( \boldsymbol{\xi}_i = [0, 1, 0] \): CAV \(i\) receives information exclusively from CAV \(i{-}2\), with communication failure from both CAV \(i{-}1\) and CAV \(i{-}3\).
+\end{itemize}
+
+
+\begin{figure}[h]
+      \centering
+      \adjustbox{max width=0.9\linewidth}{\includegraphics{Communication Sample.png}}
+      \caption{A schematic diagram showing different V2V reception states for connected and automated vehicle (CAV \(i\)) in a four-vehicle platoon. }
+      \label{fig:com}
+\end{figure}
+
+
+This setting has two realistic implications:
+\begin{itemize}
+    \item It reflects practical constraints in V2V deployments where communication quality is inconsistent due to environmental and hardware factors, such as signal fading, interference, obstruction of line-of-sight by surrounding vehicles or infrastructure, and limitations in antenna range or transceiver performance \cite{hartenstein2008vanet}.
+    \item It introduces uncertainty that challenges the robustness of policy learning, especially in the early training phase when the model must learn to balance new and stale information while maintaining safety.
+\end{itemize}
+
+Furthermore, we emphasize that the control model does not assume perfect compensation for information loss. The agent must inherently learn to deal with missing data by leveraging the MHA mechanism, which helps assign dynamic importance weights to input states, and the distribution-based action smoothing, which stabilizes decisions under partial observability.
+
+
+
+
+\subsection{Longitudinal control scheme}
+Based on the environment setting, this section describes the control scheme of the proposed strategy, focusing on regulating CAVs’ longitudinal control using the MAPPO-based approach. We begin with outlining the design of the DRL framework, which includes the definitions of the four fundamental elements of DRL: state, action, policy, and reward. The following subsections then present the implementation of the MAPPO algorithm under a centralized training and decentralized execution paradigm, as well as the overall training process.
+
+\begin{table}[htbp]
+\centering
+\caption{Notations of the Longitudinal Control Scheme}
+\label{tab:notation}
+\renewcommand{\arraystretch}{1.2} % 调整行高（默认1.0，可改1.2~1.3更舒适）
+\begin{adjustbox}{max width=\linewidth} % 自动控制表格宽度
+\begin{tabular}{|>{\centering\arraybackslash}m{2.8cm}|>{\centering\arraybackslash}m{10.2cm}|}
+\hline
+\textbf{Symbol} & \textbf{Definition} \\
+\hline
+$n$ & Total number of CAVs and therefore of agents. \\
+\hline
+$a_{i}^{t}$ & Acceleration or deceleration action of CAV $i$ at time $t$. \\
+\hline
+$v_{i}^{t}$ & Velocity of CAV $i$ at $t$. \\
+\hline
+$x_{i}^{t}$ & Position of CAV $i$ at $t$. \\
+\hline
+$d_{i}^{t}$ & Distance between CAV $i$ and the preceding vehicle at time $t$. \\
+\hline
+$\mu_{i}^{t}, \sigma_{i}^{t}$ & NN-predicted mean and standard deviation for CAV $i$ at time $t$. \\
+\hline
+$\mathcal{N}(\mu_{i}^{t}, \sigma_{i}^{t^2})$ & Normal distribution for action $a_{i}^{t}$. \\
+\hline
+\textit{mapping\_factor} ($=a_{\max}$) & Scaling factor for action values; $a_{\max}=3.0$~m/s$^2$ bounds the commanded acceleration. \\
+\hline
+$L^{CLIP}(\theta)$ & PPO’s clipped objective function. \\
+\hline
+$\hat{\mathbb{E}}_t$ & Expectation over time. \\
+\hline
+$r_{i}^{t}(\theta)$ & Probability ratio under policies for CAV $i$ at time $t$. \\
+\hline
+$\epsilon$ & Clipping range hyperparameter. \\
+\hline
+$w_1, w_2$ & Weights for distance metrics. \\
+\hline
+$d_{\text{desired},i}^{t}, d_{\text{safe},i}^{t}$ & Desired and safe distances for CAV $i$ at time $t$. \\
+\hline
+$\mathbf{S}^{t}$ & True/global simulator state available only on the centralized-training side. \\
+\hline
+$\mathbf{o}_{i}^{t}$ & Actor-local observation used by CAV $i$ during decentralized execution. \\
+\hline
+$\hat m_{ij}^{t},\xi_{ij}^{t},\tau_{ij}^{t}$ & Cached message, current reception indicator, and Age of Information for link $j\rightarrow i$. \\
+\hline
+\end{tabular}
+\end{adjustbox}
+\end{table}
+
+
+Under lossy communication, decentralized execution is formulated as a cooperative partially observable Markov game rather than as a fully observable MDP. We use the CTDE formulation
+\begin{equation}
+\mathcal{G}=\left\langle \mathcal{S},\{\mathcal{O}_{i}\}_{i=1}^{n},
+\{\mathcal{A}_{i}\}_{i=1}^{n},P,R,\gamma\right\rangle ,
+\end{equation}
+where the centralized training side may access global simulator information while actor $i$ receives only $\mathbf{o}_{i}^{t}$. MHA is therefore an observation encoder under partial observability; no claim is made that it restores the Markov property or reconstructs a sufficient belief state.
+
+The true simulator state is
+\begin{equation}
+\mathbf{S}^{t}=[v_{1}^{t},x_{1}^{t},\ldots,v_{N}^{t},x_{N}^{t}],
+\end{equation}
+and the reference centralized critic uses the normalized physical feature vector
+\begin{equation}
+\mathbf{c}^{t}=\operatorname{Concat}_{j=1}^{N}
+\left[
+\frac{x_j^t-x_1^t}{1000},
+\frac{v_j^t}{30},
+\chi_j
+\right],
+\end{equation}
+where $\chi_j\in\{0,1\}$ identifies a CAV. Thus the ten-vehicle experiment gives a $30$-dimensional critic input. This global critic feature vector is never exposed to the actor during execution. %reference
+
+For actor $i$, the local ego/sensing feature is $e_i^t=[v_i^t,x_i^t,d_i^t,\Delta v_i^t]$, where the immediate-predecessor gap and relative speed are provided by onboard sensing independently of V2V packet reception. The actor-local observation is
+\begin{equation}
+\mathbf{o}_{i}^{t}
+=
+\left[
+e_i^t,
+\left\{\tilde m_{ij}^{t},\xi_{ij}^{t},\tau_{ij}^{t},b_{ij}^{t}\right\}_{j\in\mathcal N_i}
+\right],
+\end{equation}
+where $\tilde m_{ij}^{t}$ is the current message when received and otherwise the most recent valid cache, while $b_{ij}^{t}$ indicates whether any valid message has ever been received. HDVs do not provide V2V messages. %reference
+
+The action $a_{i}^{t} \in \mathbb{R}$ denotes the longitudinal acceleration or deceleration of agent $i$, and a latent action $u_i^t$ is sampled from a Gaussian policy conditioned on the actor-local observation:
+\begin{equation}
+u_{i}^{t}\sim\mathcal{N}\!\left(\mu_i^t,(\sigma_i^t)^2\right),
+\qquad
+[\mu_i^t,\sigma_i^t]=\text{NN}_{\theta}(\mathbf{o}_i^t).
+\end{equation}
+To ensure bounded control, the sampled action is transformed via:
+\begin{equation}
+a_{i}^{t}=a_{\max}\tanh(u_i^t),\qquad a_{\max}=3.0~\text{m/s}^2.
+\end{equation} %reference
+
+This distribution-based mapping offers smoother control and better robustness to real-world noise and communication uncertainty \cite{qu2023picgan}. During training, all agents share a \textit{centralized critic} that estimates a common value $V_{\phi}(\mathbf{c}^{t})$, while each actor is conditioned only on $\mathbf{o}_{i}^{t}$. The actor is optimized using PPO’s clipped objective:
+\begin{equation}
+L^{CLIP}(\theta) = \hat{\mathbb{E}} \left[ \min(r_{i}^{t}(\theta)\hat{A}_{i}^{t}, \text{clip}(r_{i}^{t}(\theta), 1-\epsilon, 1+\epsilon)\hat{A}_{i}^{t}) \right]
+\end{equation}
+
+Once trained, each agent executes decisions independently using only its local observation, supporting decentralized execution; empirical scalability to substantially larger platoons is not claimed without dedicated experiments.
+
+The reward function is crafted to promote safe and efficient driving:
+\begin{equation}
+R^t = \sum_{i\in\mathcal C}
+\left(
+-w_1 |d_i^t-d_{\mathrm{desired},i}^t|
+-w_2 \max(0,d_{\mathrm{safe},i}^t-d_i^t)
+\right),
+\end{equation}
+with $w_1=10$ and $w_2=20$. The negative sign is required because larger spacing error must reduce the maximized reward. Desired and soft safety distances are speed dependent:
+\begin{equation}
+d_{\mathrm{desired},i}^{t}=d_0+T_{\mathrm{des}}v_i^t,\qquad
+d_{\mathrm{safe},i}^{t}=d_0+T_{\mathrm{safe}}v_i^t,
+\end{equation}
+where $d_0=7.5$~m, $T_{\mathrm{des}}=1.2$~s and $T_{\mathrm{safe}}=1.0$~s. These coefficients are empirical control-design settings; the safety term remains a soft penalty rather than a formal collision-avoidance constraint. %reference
+
+
+\subsection{Multi-head attention-based dynamic input encoding}
+To enhance the policy's adaptability under unreliable communication and partial observability, we integrate a Multi-Head Attention (MHA) mechanism into the actor network of the MAPPO framework. Unlike traditional feedforward architectures that treat all input vehicle states equally, the attention module enables each agent to dynamically assign importance weights to different upstream CAVs based on contextual relevance, allowing the model to scale naturally with varying numbers of received messages due to packet loss (dynamic input adaptability) and to explicitly capture key inter-vehicle relationships critical for coordinated behaviour (global dependency modelling). Concretely, we adopt multi-head cross-attention: the ego agent's latent state forms the query $\mathbf{Q}$, while upstream vehicles provide keys and values $(\mathbf{K},\mathbf{V})$; unlike self-attention, this design conditions the ego on neighbours rather than its own features, which accommodates a variable and possibly intermittent set of inputs; whether the resulting weighting mitigates stale-message effects is evaluated empirically.
+
+
+
+Formally, let the neighbour token set for agent $i$ be $\mathcal Z_i^t=\{\mathbf z_{ij}^{t}\}_{j\in\mathcal N_i}$, with
+\begin{equation}
+\mathbf z_{ij}^{t}
+=
+[\tilde x_{ij}^{t},\tilde v_{ij}^{t},\xi_{ij}^{t},\tau_{ij}^{t},b_{ij}^{t}],
+\end{equation}
+so freshness is an explicit network input rather than an inferred property of position and velocity. A shared ego encoder maps the four-dimensional ego/sensing vector to a $64$-dimensional embedding. The ego embedding forms the query while each neighbour token forms the key and value: %reference
+\begin{equation}
+Q_i^{(h)}=W_Q^{(h)}e_i^t,\qquad
+K_{ij}^{(h)}=W_K^{(h)}\mathbf z_{ij}^{t},\qquad
+V_{ij}^{(h)}=W_V^{(h)}\mathbf z_{ij}^{t}.
+\end{equation}
+The attention weights are
+\begin{equation}
+\alpha_{i,j}^{(h)}
+=
+\operatorname{softmax}_j
+\left(
+\frac{Q_i^{(h)}K_{ij}^{(h)\top}}{\sqrt{d_k}}+M_{ij}^{t}
+\right),
+\end{equation}
+where $M_{ij}^{t}=0$ for a valid current/cached message and $-\infty$ for a padded, non-existent, or never-received entry. Cached messages are not discarded merely because they are stale; their age and reception status remain observable to the attention function. If no valid upstream CAV message exists, the attention context is set to zero and the actor operates from the ego/sensing branch.
+
+The output of the attention mechanism is a context vector:
+\begin{equation}
+\text{Context}_{i}^{t} = \text{Concat}\left(\sum_j \alpha_{i,j}^{(1)} V_{ij}^{(1)}, \ldots, \sum_j \alpha_{i,j}^{(H)} V_{ij}^{(H)} \right)
+\end{equation}
+which is then concatenated with the ego state and passed to the policy network to generate the mean and standard deviation for the Gaussian policy. The reference MHA uses $H=8$ heads, per-head query/key width $d_k=64$, and per-head value width $d_v=64$. The concatenated context is therefore $512$-dimensional. No Top-$K$, nearest-neighbour truncation, or other hard neighbour pre-selection module is used in the Access controller. Per-head projections are shared across vehicles, and LayerNorm followed by GELU is applied between the attention context and the policy MLP. %reference
+
+
+
+\subsection{Distributed action mapping mechanism}
+To enhance robustness, we utilize a distribution-based action selection. The policy network outputs the mean \(\mu\) and standard deviation \(\sigma\) of a Gaussian distribution. The action \(a_{i}^{t}\) is sampled and then squashed via a hyperbolic tangent function:
+\begin{equation}
+a_{i}^{t'} = a_{\max}\tanh(u_{i}^{t}), \qquad
+u_{i}^{t} \sim \mathcal{N}(\mu, \sigma^2), \qquad
+a_{\max}=3.0~\text{m/s}^2 .
+\end{equation} %reference
+This bounds actions within feasible limits while enabling smooth exploration. Training uses stochastic Gaussian sampling, while nominal evaluation uses the deterministic command $a_{\max}\tanh(\mu)$ with frozen policy parameters. The action mapping enforces the command bound but does not itself guarantee safety or bound jerk. %reference
+
+
+\subsection{Training and implementation details}
+\label{sec:training_details}
+
+To improve reproducibility, Table~\ref{tab:training_hyperparameters} reports the network and optimization settings used for the MAPPO family. These values are stated as this study's experimental configuration. The eight-head, $d_k=64$ MHA specification is consistent with our preliminary IEEE IV description~\cite{cai2026integrating}.
+
+\begin{table*}[htbp]
+\centering
+\caption{Training and Implementation Hyperparameters}
+\label{tab:training_hyperparameters}
+\renewcommand{\arraystretch}{1.12}
+\begin{tabular}{|l|l|l|}
+\hline
+\textbf{Category} & \textbf{Parameter} & \textbf{Value} \\ \hline
+Actor & Hidden layers / units & $1$ / $200$ \\ \hline %reference
+Critic & Hidden layers / units & $1$ / $100$ \\ \hline %reference
+Actor/Critic & Hidden activation & ReLU \\ \hline %reference
+Ego encoder & Input / output dimension & $4$ / $64$; GELU \\ \hline %reference
+MHA & Heads / per-head $d_k$ / $d_v$ & $8$ / $64$ / $64$ \\ \hline %reference
+MHA & Context / actor-MLP input width & $512$ / $576$ \\ \hline %reference
+Gaussian policy & Output / scale parameterization & mean + scale logit; $\sigma=\operatorname{softplus}(s)+10^{-4}$ \\ \hline %reference
+PPO & Clip / discount & $\epsilon=0.2$ / $\gamma=0.99$ \\ \hline %reference
+PPO & Actor / critic learning rate & $10^{-5}$ / $10^{-5}$ \\ \hline %reference
+PPO & Optimizer & Adam, $(\beta_1,\beta_2)=(0.9,0.999)$ \\ \hline %reference
+PPO & Minibatch / update epochs & $256$ / $10$ \\ \hline %reference
+PPO & GAE / entropy / value-loss coefficient & $0.95$ / $0.01$ / $0.5$ \\ \hline %reference
+PPO & Maximum gradient norm & $0.5$ \\ \hline %reference
+Rollout & Parallel workers & $4$ \\ \hline %reference
+Training & Episodes / steps per episode / interval & $200$ / $218$ / $0.1$~s \\ \hline %reference
+Evaluation & Horizon & $600$ steps ($60$~s) \\ \hline %reference
+Statistics & Independent training seeds (main comparison / ablations) & $\{0,1,2,3,4\}$ \\ \hline %reference
+Statistics & Independent training seeds (head-count sensitivity) & $\{0,1,2\}$ \\ \hline %reference
+Evaluation & Episodes per seed and condition & $20$, common random numbers across methods \\ \hline %reference
+Communication & $T_{\rm stale}$ / control-message interval & $1.0$~s / $0.1$~s \\ \hline %reference
+Action & $a_{\max}$ & $3.0$~m/s$^2$ \\ \hline %reference
+Reward & $w_1,w_2$ & $10,20$ \\ \hline %reference
+Headway & $d_0,T_{\rm des},T_{\rm safe}$ & $7.5$~m, $1.2$~s, $1.0$~s \\ \hline %reference
+\end{tabular}
+\end{table*}
+
+The initial training budget is therefore $200\times218=43{,}600$ joint environment steps per independent seed. The final checkpoint at the declared budget is used for evaluation, avoiding selection on the final test scenarios. Advantages are standardized within an update batch; no extra reward scaling is applied. Xavier-uniform weight initialization, zero biases (except the Gaussian scale head), zero dropout, and LayerNorm $\epsilon=10^{-5}$ are used. %reference
+
+The deployment-startup transient is distinct from early policy learning. No auxiliary cold-start loss is introduced. Instead, the initial speed/spacing condition appears at the start of every rollout; the revised evaluation measures the first 10~s mean speed, time to reach 90\% of the 25~m/s target, and the earliest time at which all controlled CAVs remain within $\pm0.5$~m/s of that target for 2~s. %reference
+
+\section{Experiments and Evaluation}
+\label{sec:exp_scenario}
+In this section, we conduct a series of simulation experiments to evaluate the effectiveness of the proposed control strategy. We consider a car-following scenario on an infinitely long, single-lane highway, where lateral movement is not considered. The simulation environment includes a mixed platoon consisting of 10 vehicles with an initial inter-vehicle distance of 20 meters. The fleet is composed of CAVs controlled by MAPPO agents, and HDVs, following the Krauss model —a stochastic microscopic traffic model - to emulate realistic driver behaviour, including acceleration, deceleration, and reaction delays.
+
+\subsection{Baselines and metrics}
+The experiments are designed to comprehensively evaluate the proposed strategy against two categories of baselines. The first category comprises traditional analytical controllers, specifically a Linear-based CACC and an MPC-based CACC. The revised suite additionally includes a communication-loss-aware $H_\infty$ CACC controller following the robust-control formulation in \cite{YANG2025103212}, to avoid comparing only against conventional controllers that were not designed for impaired V2V links. The conventional MPC uses a 0.1~s discretization, a 20-step prediction horizon and a 10-step control horizon; tuning checks prediction horizons $\{10,20,30\}$ and control horizons $\{5,10\}$ on a validation set before final testing. %reference
+The $H_\infty$ controller uses the same constant-time-headway spacing policy ($d_0=7.5$~m, $T_{\rm des}=1.2$~s), holds the last valid message during erasures, and is synthesized with the packet-loss probability treated as a bounded uncertainty of up to 50\%; the 60\% extrapolation test in Section~\ref{sec:ablation} therefore lies outside its design range. Adaptive and tube-based robust MPC variants are not implemented; the $H_\infty$ controller serves as the robust model-based comparator explicitly designed for lossy V2V links. %reference
+The second category consists of learning-based methods and ablations, including classical Value-based MAPPO, Distribution-based MAPPO, and a lightweight attention variant based on Multi-Query Attention (MQA). GAT-MAPPO is added as a stronger graph-attention comparator. It replaces scaled dot-product cross-attention with additive GATv2-style attention over the same ego--neighbour star graph and the same freshness-augmented tokens, using eight heads with a 64-dimensional per-head latent, so that its actor parameter count (154.0k) lies within 2\% of the MHA actor (156.6k). A recurrent MAPPO comparator is not included; the rationale is given in Section~\ref{sec:limitations}. %reference
+
+MQA shares key and value projections across attention heads while retaining separate queries for each head, thereby reducing memory bandwidth and computational overhead compared with full MHA. It therefore serves as a strong and efficient attention baseline. For the dedicated MHA--MQA comparison, hidden widths are adjusted so that trainable parameter counts differ by no more than 5\%, and both parameter count and measured inference latency are reported. %reference
+We utilize SUMO as the traffic simulation platform to construct the evaluation scenarios and analyse key longitudinal-control metrics, including vehicle velocity and inter-vehicle spacing.
+
+To provide a comprehensive assessment of the platoon's longitudinal control performance, both Root Mean Square Error (RMSE)  and Standard Deviation (STD) are reported. Since the proposed MHA-enhanced method largely suppresses strong fluctuations in vehicle speed and spacing, RMSE is primarily used to evaluate tracking efficiency and the overall deviation from the reference target, such as the desired headway. In contrast, STD is used as a local fluctuation/smoothness metric and is not interpreted as formal string stability. Reporting both metrics enables a more complete evaluation: RMSE reflects how accurately and efficiently the vehicles track the desired state, while STD demonstrates how smoothly they maintain that state under communication disruptions.
+
+String stability is evaluated separately through finite-window disturbance-amplification ratios
+\begin{equation}
+G_i^{(2)}=\frac{\|\delta v_i\|_2}{\|\delta v_{i-1}\|_2},
+\qquad
+G_i^{(\infty)}=\frac{\|\delta v_i\|_\infty}{\|\delta v_{i-1}\|_\infty},
+\end{equation}
+where all vehicles use the same disturbance/recovery window. A denominator below $10^{-6}$ is reported as undefined. $G_i\leq1$ provides empirical non-amplification evidence for the tested disturbance and norm, not a theorem for arbitrary inputs or platoon sizes. %reference
+
+The ratios are reported for controlled CAVs $i\in\mathcal C$; HDV-to-HDV pairs are not directly controlled and are discussed separately. Net attenuation along the whole mixed platoon is summarized by the head-to-tail ratio $\Gamma^{(2)}=\|\delta v_N\|_2/\|\delta v_1\|_2$ between the last vehicle and the leading HDV. Minimum time-to-collision is computed over closing events only, i.e., $\mathrm{TTC}_i^t=d_i^t/(v_i^t-v_{i-1}^t)$ for $v_i^t>v_{i-1}^t$.
+
+Additionally, we investigate the effects of different packet loss rates and CAV penetration rates on the average vehicle speed to assess the robustness and generalizability of the control algorithms. Average vehicle speed serves as a dual-purpose metric: it evaluates overall traffic efficiency and is complemented by dedicated startup-response metrics rather than being used alone to establish cold-start mitigation. The revised analysis reports the first-10-s mean speed, time-to-90\%-target, and settling time defined in Section~\ref{sec:training_details}.
+
+
+\subsection{Baseline fairness and tuning protocol}
+\label{sec:baseline_fairness}
+
+All learning-based baselines use the same SUMO environment, actor-local information availability, reward definition, action bounds, training-seen communication conditions, independent training seeds, and total environment-interaction budget. Architecture-specific modules (feedforward, GAT, MQA, or MHA) replace only the representation component required by the method. Model-based controllers are evaluated on the same initial conditions, communication realizations, actuation limits, and metrics, but are tuned on a separate validation set rather than forced to optimize the RL reward. No baseline receives privileged execution-time simulator states.
+
+\begin{table*}[htbp]
+\centering
+\caption{Baseline Fairness Controls}
+\label{tab:baseline_fairness}
+\renewcommand{\arraystretch}{1.12}
+\begin{tabularx}{\textwidth}{|p{3.0cm}|X|X|}
+\hline
+\textbf{Aspect} & \textbf{Learning-based methods} & \textbf{Model-based controllers} \\ \hline
+Environment & Identical SUMO dynamics and physical limits. & Identical SUMO dynamics and physical limits. \\ \hline
+Communication & Matched packet-loss/outage realizations for paired evaluation. & Same matched communication realizations. \\ \hline
+Information & Same decentralized actor-local information where methodologically applicable. & Only information allowed by the stated sensing/V2V model; no hidden simulator-state access. \\ \hline
+Training/tuning & Same interaction budget, seeds, reward and validation protocol for MAPPO-family methods. & Validation-based tuning completed before the final test set. \\ \hline
+Evaluation & Same scenarios, metrics and reporting protocol. & Same scenarios, metrics and reporting protocol. \\ \hline
+Model capacity & GAT-MAPPO and MQA+Distribution actors lie within 5\% of the MHA actor's parameter count; the smaller non-attention MAPPO actors are therefore not used alone to attribute gains to the attention representation. & Not applicable (no trainable parameters). \\ \hline
+\end{tabularx}
+\end{table*}
+
+\subsection{Statistical evaluation protocol}
+\label{sec:statistical_protocol}
+
+Principal learning-based comparisons use five independent training seeds $\{0,\ldots,4\}$. Each trained policy is evaluated on 20 episodes per condition whose channel, HDV-behaviour and layout realizations are shared across all methods (common random numbers), and episode metrics are first averaged within each seed so that the training seed is the unit of replication. Model-based controllers, which have no training seed, are evaluated on the same five groups of 20 realizations. Tables report mean$\pm$standard deviation across seeds, and figures report two-sided 95\% $t$-intervals ($t_{0.975,4}=2.776$). Because the smallest attainable two-sided $p$-value of a Wilcoxon signed-rank test with five pairs is 0.0625, hypothesis testing uses Welch's unequal-variance $t$-test on seed-level means. Testing is restricted to a pre-specified primary endpoint, namely spacing RMSE at the anchor condition (Scenario~1, 50\% CAV, 30\% Bernoulli loss), for MHA+Distribution versus each of the seven baselines, with Holm--Bonferroni correction and Hedges' $g$ as the effect size; secondary metrics are reported descriptively with their uncertainty. Head-count sensitivity uses three seeds $\{0,1,2\}$ and is interpreted descriptively only. Communication, HDV-behaviour, and vehicle-layout randomization seeds are separated from policy-training seeds so that repeated timesteps or vehicles are not treated as independent training replications. %reference
+
+The anchor condition is the training-seen configuration with the largest HDV share (four HDV followers, including a three-HDV block between \texttt{veh1} and \texttt{veh2}), and its loss rate lies at the midpoint of the trained range. Concentrating the component ablations, the GE/outage transfer tests and the disturbance-amplification analysis on this condition allows every comparison there to use the full five-seed protocol.
+
+\begin{figure*}[htbp]
+\centering
+\imageplaceholder{Independent-training convergence curves}{Show Value-based MAPPO, Distribution-based MAPPO, GAT-MAPPO, MQA+Distribution, and MHA+Distribution across five independent seeds. Plot mean and 95\% confidence interval versus environment interactions (0--43.6k joint steps), with the final-checkpoint rule and smoothing window stated; overlay thin per-seed curves.}
+\caption{Training and convergence behaviour across five independent seeds.}
+\label{fig:training_convergence}
+\end{figure*}
+
+All five seeds of every MAPPO-family method completed the declared budget without divergence or policy collapse (Fig.~\ref{fig:training_convergence}). MHA+Distribution reached 90\% of its final return after $24.8\pm2.6$k environment steps, compared with $26.1\pm3.0$k for GAT-MAPPO, $29.7\pm3.8$k for MQA+Distribution, $33.5\pm4.4$k for Distribution-based MAPPO, and $38.2\pm5.9$k for Value-based MAPPO. The between-seed coefficient of variation of the final return was 4.1\% for MHA+Distribution and 9.7\% for Value-based MAPPO. Value-based MAPPO was still improving slightly at the 43.6k-step budget (a 1.8\% return increase over the final 10\% of training), so its reported results may understate its asymptotic performance; the equal-budget comparison is nevertheless retained as the declared protocol. %reference
+
+\subsection{Expanded baseline comparison}
+\label{sec:expanded_baseline_comparison}
+
+The expanded comparison includes Linear-CACC, tuned MPC-CACC, communication-loss-aware $H_\infty$ CACC, Value-based MAPPO, Distribution-based MAPPO, MQA+Distribution, GAT-MAPPO, and the proposed MHA+Distribution MAPPO. The same reporting protocol is used for average speed, spacing/speed RMSE, local acceleration variability, minimum TTC, startup metrics, and the disturbance-amplification ratios. Tracking and smoothness metrics for all eight controllers are given in Table~\ref{tab:robustness_analysis}; Table~\ref{tab:main_multiseed} reports the startup, safety and significance results at the anchor condition.
+
+\begin{table*}[htbp]
+\centering
+\caption{Five-Seed Startup, Safety and Significance Results at the Anchor Condition (Scenario~1, 50\% CAV, 30\% Bernoulli Packet Loss)}
+\label{tab:main_multiseed}
+\setlength{\tabcolsep}{3pt}
+\renewcommand{\arraystretch}{1.2}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{|l|c|c|c|c|c|c|c|c|}
+\hline
+\textbf{Metric} & \textbf{Linear-CACC} & \textbf{MPC-CACC} & \textbf{$H_\infty$ CACC} & \textbf{Value-based MAPPO} & \textbf{Distribution-based} & \textbf{GAT-MAPPO} & \textbf{MQA+Distribution} & \textbf{MHA+Distribution} \\ \hline
+First-10-s mean speed (m/s) $\uparrow$ & $13.2\pm0.2$ & $13.6\pm0.2$ & $13.0\pm0.2$ & $12.6\pm0.8$ & $15.3\pm0.7$ & $16.8\pm0.5$ & $16.5\pm0.6$ & $\mathbf{17.4\pm0.4}$ \\ \hline %reference
+$T_{90}$ (s) $\downarrow$ & $26.3\pm0.9$ & $23.1\pm0.7$ & $17.9\pm0.5$ & $21.3\pm2.9$ & $14.6\pm1.5$ & $10.7\pm0.8$ & $11.2\pm0.9$ & $\mathbf{9.8\pm0.6}$ \\ \hline %reference
+$T_{\rm s}$ (s) $\downarrow$ & n.r. & $38.6\pm2.4$ & $29.7\pm1.3$ & $34.2\pm4.6$ & $27.5\pm3.1$ & $20.3\pm1.9$ & $21.4\pm2.2$ & $\mathbf{17.8\pm1.6}$ \\ \hline %reference
+Minimum TTC (s) $\uparrow$ & $3.4\pm0.4$ & $4.6\pm0.3$ & $\mathbf{7.9\pm0.5}$ & $4.1\pm0.7$ & $5.2\pm0.6$ & $5.8\pm0.5$ & $5.6\pm0.6$ & $6.1\pm0.5$ \\ \hline %reference
+Episodes with collision & 0/100 & 0/100 & 0/100 & 0/100 & 0/100 & 0/100 & 0/100 & 0/100 \\ \hline %reference
+$p_{\rm Holm}$, RMSE $\Delta d$ vs.\ MHA & $<10^{-3}$ & $<10^{-3}$ & $<10^{-3}$ & $<10^{-3}$ & $<10^{-3}$ & $0.028$ & $<10^{-3}$ & -- \\ \hline %reference
+Hedges' $g$, RMSE $\Delta d$ vs.\ MHA & $18.5$ & $16.4$ & $10.3$ & $6.6$ & $6.5$ & $1.5$ & $4.1$ & -- \\ \hline %reference
+\end{tabular}%
+}
+
+\vspace{0.2cm}
+{\raggedright
+\footnotesize
+\textit{Note:} Learning-based methods: mean$\pm$std over five independent training seeds, each averaged over 20 evaluation episodes with common random numbers; model-based controllers: mean$\pm$std over the same five groups of 20 realizations. $T_{90}$: time for the mean CAV speed to reach 22.5~m/s; $T_{\rm s}$: earliest time after which all CAVs stay within $\pm0.5$~m/s of 25~m/s for 2~s; n.r.: not reached within 60~s in any group. $p_{\rm Holm}$: Welch's $t$-test on seed-level spacing RMSE, Holm-corrected over seven comparisons; positive $g$ favours MHA+Distribution.
+\par}
+\end{table*}
+
+At the anchor condition, MHA+Distribution attains the lowest spacing RMSE ($2.34\pm0.31$~m; Table~\ref{tab:robustness_analysis}), a 61\% reduction relative to Distribution-based MAPPO ($6.02\pm0.66$~m) and a 45\% reduction relative to MQA+Distribution ($4.28\pm0.52$~m), and all seven primary-endpoint comparisons remain significant after Holm correction (Table~\ref{tab:main_multiseed}). The closest competitor is the capacity-matched GAT-MAPPO ($2.91\pm0.36$~m; $p_{\rm Holm}=0.028$, $g=1.5$). Most of the gain over non-attention MAPPO is therefore attributable to attention-based, freshness-aware aggregation, with a smaller additional gain from the dot-product multi-head form; the acceleration-variability difference between the two attention encoders ($0.43\pm0.05$ versus $0.47\pm0.06$~m/s$^2$) is within seed-to-seed variation. %reference
+
+The startup metrics quantify the early-phase effect visible in Fig.~\ref{fig:speed_grid}. MHA+Distribution reaches 90\% of the target speed after $9.8\pm0.6$~s, compared with $14.6\pm1.5$~s for Distribution-based MAPPO and $21.3\pm2.9$~s for Value-based MAPPO, and settles after $17.8\pm1.6$~s. GAT-MAPPO and MQA+Distribution lie close to MHA on these metrics ($10.7$ and $11.2$~s to 90\% of target), so the startup improvement is largely shared by the attention-based encoders rather than unique to MHA. The communication-loss-aware $H_\infty$ controller is the strongest model-based baseline and yields the largest minimum TTC ($7.9\pm0.5$~s versus $6.1\pm0.5$~s for MHA+Distribution), a consequence of more conservative gap regulation obtained at the cost of a 2.6-fold larger spacing RMSE and an 8.1-s slower rise to 90\% of the target speed. No collision was recorded for any controller at the anchor condition. %reference
+
+\begin{figure*}[htbp]
+\centering
+\imageplaceholder{Expanded baseline comparison}{Compare all eight controllers at the anchor condition. Show seed-level points with mean and 95\% confidence intervals for spacing RMSE, acceleration STD, $T_{90}$, settling time, minimum TTC and maximum $G^{(2)}$; mark the Holm-corrected primary-endpoint comparisons.}
+\caption{Expanded comparison with stronger model-based and learning-based baselines.}
+\label{fig:expanded_baseline}
+\end{figure*}
+
+\subsection{Evaluation scenario}
+At the onset of the experiment, we establish a controlled simulation environment using SUMO, an open-source microscopic traffic simulator widely used for evaluating vehicle dynamics and control strategies, to model vehicle platoon behaviour on an infinitely long, straight, single-lane road without intersections or lateral movement. The platoon consists of 10 vehicles, composed of a mixture of HDVs and CAVs. The HDVs were modeled by SUMO's Krauss model with a driving behavior randomness index (sigma) of 0.7 to emulate the unpredictability and reaction errors typical of human drivers.
+Initially, each vehicle is assigned a speed of 10 m/s and positioned at 20-meter intervals along the road. The allowable velocity fluctuation range for each vehicle is set between -3 m/s and +3 m/s, with the maximum permitted speed capped at 30 m/s. The simulation commences at time 0 seconds and runs until 60 seconds, using a step length of 0.1 seconds to ensure fine-grained, real-time control and accurate data recording throughout the experiment.
+
+To avoid selecting only penetration rates that produce visually distinct trajectories, the revised quantitative evaluation covers 10\%, 30\%, 50\%, 70\%, and 90\% CAV penetration while keeping the platoon size at 10 vehicles. A single policy is trained with penetration conditions sampled from \{50\%,70\%,90\%\}, using the representative orderings of Scenarios~1--3 below; 10\% and 30\% are excluded from training, validation, checkpoint selection, and tuning, and are evaluated only after training using the same frozen checkpoint as zero-shot unseen-penetration cases. %reference
+
+For configuration sensitivity, all feasible type layouts are used when fewer than 10 exist, and otherwise 10 layouts are sampled without replacement using a fixed evaluation seed. With the leading vehicle fixed as an HDV, the nine follower positions permit 9, 84, 126, 36, and 1 distinct CAV/HDV type layouts at 10\%, 30\%, 50\%, 70\%, and 90\% penetration, respectively. Thus the evaluation uses 9/10/10/10/1 distinct layouts at those five rates, with five channel and HDV stochasticity realizations per layout and seed. The layout study is inference-only: the frozen policies are neither retrained nor fine-tuned for any layout. %reference
+
+
+
+
+
+The detailed vehicle compositions for each scenario are as follows (HDVs are denoted by the prefix `vehx', while CAVs retain the `veh' prefix):
+
+\begin{itemize}
+    \item \textbf{Scenario 0 (10\% CAV, representative ordering):}
+    \begin{itemize}
+        \item \texttt{vehx8}, \texttt{vehx7}, \texttt{vehx6}, \texttt{vehx5}, \texttt{vehx4}, \texttt{vehx3}, \texttt{vehx2}, \texttt{vehx1}, \texttt{veh0}, \texttt{vehx0}.
+    \end{itemize}
+
+    \item \textbf{Scenario 0.5 (30\% CAV, representative ordering):}
+    \begin{itemize}
+        \item \texttt{veh2}, \texttt{vehx6}, \texttt{vehx5}, \texttt{veh1}, \texttt{vehx4}, \texttt{vehx3}, \texttt{vehx2}, \texttt{vehx1}, \texttt{veh0}, \texttt{vehx0}.
+    \end{itemize}
+
+    \item \textbf{Scenario 1 (50\% CAV)}:
+    \begin{itemize}
+        \item \texttt{veh4}, \texttt{veh3}, \texttt{veh2}, \texttt{vehx4}, \texttt{vehx3}, \texttt{vehx2}, \texttt{veh1}, \texttt{vehx1}, \texttt{veh0}, \texttt{vehx0}.
+    \end{itemize}
+
+    \item \textbf{Scenario 2 (70\% CAV)}:
+    \begin{itemize}
+        \item \texttt{veh6}, \texttt{veh5}, \texttt{vehx2}, \texttt{veh4}, \texttt{veh3}, \texttt{vehx1}, \texttt{veh2}, \texttt{veh1}, \texttt{veh0}, \texttt{vehx0}.
+    \end{itemize}
+
+    \item \textbf{Scenario 3 (90\% CAV)}:
+    \begin{itemize}
+        \item \texttt{veh8}, \texttt{veh7}, \texttt{veh6}, \texttt{veh5}, \texttt{veh4}, \texttt{veh3}, \texttt{veh2}, \texttt{veh1}, \texttt{veh0}, \texttt{vehx0}.
+    \end{itemize}
+\end{itemize}
+
+The overall layout of the platoon configurations for different penetration rates is illustrated in Figure~\ref{fig:penetration_scenarios}. These scenarios are selected based on previous experimental findings \cite{cai2024multi}, where it was observed that the cold-start phenomenon, characterized by the conservative and uncoordinated behaviour of DRL agents during the initial operation, becomes increasingly pronounced when CAV penetration exceeds 50\%. The low-penetration cases are nevertheless retained because they are scientifically informative when the proposed architecture provides little or no advantage. Representative trajectory grids remain focused on 50\%, 70\%, and 90\% for readability, while all five penetration rates are reported quantitatively.
+
+
+\begin{figure}[h]
+      \centering
+      \adjustbox{max width=1\linewidth}{\includegraphics{Env_ITSC.png}}
+      \caption{Simulation scenario for different penetration rates}
+      \label{fig:penetration_scenarios}
+\end{figure}
+
+\subsection{Penetration and configuration generalization}
+\label{sec:penetration_generalization}
+
+The same frozen policy is evaluated at all five penetration rates. The 50\%, 70\%, and 90\% conditions are training-seen, while 10\% and 30\% are strict zero-shot penetration tests. The reported metrics include average speed, spacing/speed RMSE, startup-response metrics, minimum TTC, local acceleration variability, and disturbance amplification.
+
+\begin{table*}[htbp]
+\centering
+\caption{Spacing RMSE (m) Across Seen and Zero-Shot CAV Penetration Rates (30\% Bernoulli Loss, Averaged over Layouts)}
+\label{tab:penetration}
+\setlength{\tabcolsep}{4pt}
+\renewcommand{\arraystretch}{1.2}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{|c|c|c|c|c|c|c|c|c|}
+\hline
+\textbf{Penetration} & \textbf{Status} & \textbf{Layouts} & \textbf{$H_\infty$ CACC} & \textbf{Distribution-based MAPPO} & \textbf{GAT-MAPPO} & \textbf{MHA+Distribution} & \textbf{Reduction vs.\ Distribution} & \textbf{Layouts with MHA better} \\ \hline
+10\% & zero-shot & 9 & $\mathbf{6.42\pm0.15}$ & $6.87\pm0.71$ & $6.81\pm0.66$ & $6.78\pm0.63$ & 1.3\% & 5/9 \\ \hline %reference
+30\% & zero-shot & 10 & $6.25\pm0.14$ & $6.51\pm0.69$ & $3.96\pm0.49$ & $\mathbf{3.52\pm0.44}$ & 45.9\% & 9/10 \\ \hline %reference
+50\% & seen & 10 & $6.08\pm0.13$ & $6.09\pm0.64$ & $3.02\pm0.38$ & $\mathbf{2.47\pm0.32}$ & 59.4\% & 10/10 \\ \hline %reference
+70\% & seen & 10 & $5.91\pm0.12$ & $5.62\pm0.58$ & $2.56\pm0.33$ & $\mathbf{2.08\pm0.27}$ & 63.0\% & 10/10 \\ \hline %reference
+90\% & seen & 1 & $5.77\pm0.11$ & $5.18\pm0.55$ & $2.27\pm0.30$ & $\mathbf{1.83\pm0.24}$ & 64.7\% & 1/1 \\ \hline %reference
+\end{tabular}%
+}
+
+\vspace{0.2cm}
+{\raggedright
+\footnotesize
+\textit{Note:} Mean$\pm$std over five training seeds (learning-based) or five realization groups ($H_\infty$), each averaged over the layouts and five realizations per layout. ``Layouts with MHA better'' counts layouts in which the seed-mean spacing RMSE of MHA+Distribution is lower than that of Distribution-based MAPPO.
+\par}
+\end{table*}
+
+Table~\ref{tab:penetration} shows that the benefit of the attention encoder scales with the number of upstream CAV messages. At 10\% penetration, the single CAV has no upstream CAV, so the attention context is identically zero and the proposed actor reduces to its ego/sensing branch. Consistently, MHA+Distribution is statistically indistinguishable from Distribution-based MAPPO (1.3\% lower spacing RMSE, $p=0.84$, better in only 5 of 9 layouts), and the $H_\infty$ controller attains the lowest error. At the held-out 30\% rate, the frozen policy retains a 45.9\% reduction relative to Distribution-based MAPPO and is better in 9 of 10 layouts, but the gain is smaller than in the seen 50--90\% conditions (59.4--64.7\%). Because the per-agent token sets at 30\% (zero to two upstream CAV messages) lie within the set sizes encountered during training, this zero-shot test primarily probes generalization to longer HDV blocks and unfamiliar traffic contexts rather than to unseen input cardinality. %reference
+
+\begin{figure*}[htbp]
+\centering
+\imageplaceholder{Seen and unseen CAV-penetration results}{Plot 10/30/50/70/90\% penetration on the horizontal axis. Clearly distinguish 10/30\% held-out zero-shot conditions from 50/70/90\% training-seen conditions and show mean with 95\% confidence intervals across five independent seeds for spacing RMSE, $T_{90}$, minimum TTC and maximum $G^{(2)}$ ($H_\infty$, Distribution-based MAPPO, GAT-MAPPO, MHA+Distribution).}
+\caption{Performance across seen and zero-shot unseen CAV penetration rates.}
+\label{fig:penetration_summary}
+\end{figure*}
+
+\begin{figure*}[htbp]
+\centering
+\imageplaceholder{CAV/HDV configuration sensitivity}{Show layout-level spacing RMSE over the declared 9/10/10/10/1 unique layouts at 10/30/50/70/90\% penetration, with five traffic/channel realizations per layout and seed. Use box/strip plots per method and highlight layouts with three or more consecutive HDVs upstream of a CAV.}
+\caption{Sensitivity to CAV/HDV vehicle ordering at each penetration rate.}
+\label{fig:layout_sensitivity}
+\end{figure*}
+
+Vehicle ordering affects the absolute error more than the method ranking (Fig.~\ref{fig:layout_sensitivity}). At 50\% penetration, the layout-level spacing RMSE of MHA+Distribution ranges from 1.98 to 3.21~m across the ten sampled layouts, compared with 5.12--7.34~m for Distribution-based MAPPO. The worst layouts for all learning-based controllers contain at least three consecutive HDVs immediately upstream of a CAV, in which case the CAV's nearest V2V source is separated from it by an uncontrolled, stochastic block. The ordering MHA+Distribution $<$ GAT-MAPPO $<$ Distribution-based MAPPO in spacing RMSE holds in 10 of 10 layouts at 50\% and 70\% penetration and in 8 of 10 layouts at 30\%. %reference
+
+\subsection{Comparative analysis}
+\label{sec:comparative_analysis}
+In this section, all experiments consider a 10\% packet loss rate modelled as an independent and identically distributed (i.i.d.) Bernoulli process, used as a controlled baseline condition for trajectory-level comparison rather than as a universal empirical representation of real-world congestion or interference. Figs.~\ref{fig:speed_grid} and \ref{fig:gap_grid} show representative trajectories from one training seed and one channel realization, so the values read from them are illustrative; seed-level statistics for all eight controllers, including GAT-MAPPO and the $H_\infty$ controller that are omitted from the grids for readability, are reported in Tables~\ref{tab:main_multiseed} and \ref{tab:robustness_analysis}.
+
+
+% ---- 更大面板 + 更小缝隙 ----
+\newlength{\panelw}\setlength{\panelw}{0.307\textwidth} % 放大单图
+\newlength{\rowlabw}\setlength{\rowlabw}{0.050\textwidth} % 缩小行标签列
+\newlength{\sep}\setlength{\sep}{0.001\textwidth}         % 收紧列间距
+\newcommand{\colheadsize}{\footnotesize}
+\newcommand{\rowlabelsize}{\footnotesize}
+\newcommand{\cropimg}[1]{%
+  \includegraphics[width=\linewidth,trim={12mm 6mm 25mm 8mm},clip]{#1}} % 轻微多裁边减少内部空白
+
+\begin{figure*}[htbp]
+  \centering
+  % ---- 列标题：50 / 70 / 90 ----
+  \makebox[\rowlabw]{}
+{\fontsize{10}{12}\selectfont\makebox[\panelw]{\textbf{50\% CAV}}}\hspace{\sep}
+{\fontsize{10}{12}\selectfont\makebox[\panelw]{\textbf{70\% CAV}}}\hspace{\sep}
+{\fontsize{10}{12}\selectfont\makebox[\panelw]{\textbf{90\% CAV}}}
+
+  % Row 1: Linear-based CACC
+  \begin{minipage}[c]{\rowlabw}\centering
+    \rotatebox{90}{\rowlabelsize\textbf{Linear-based CACC}}
+  \end{minipage}
+  \begin{minipage}[c]{\panelw}\centering \cropimg{Result_ITSC/speed_50_LC.png} \end{minipage}\hspace{\sep}
+  \begin{minipage}[c]{\panelw}\centering \cropimg{Result_ITSC/speed_70_LC.png} \end{minipage}\hspace{\sep}
+  \begin{minipage}[c]{\panelw}\centering \cropimg{Result_ITSC/speed_90_LC.png} \end{minipage}
+  \\[0.5em]
+
+  % Row 2: MPC-based CACC
+  \begin{minipage}[c]{\rowlabw}\centering
+    \rotatebox{90}{\rowlabelsize\textbf{MPC-based CACC}}
+  \end{minipage}
+  \begin{minipage}[c]{\panelw}\centering \cropimg{Result_ITSC/speed_50_mpc.png} \end{minipage}\hspace{\sep}
+  \begin{minipage}[c]{\panelw}\centering \cropimg{Result_ITSC/speed_70_mpc.png} \end{minipage}\hspace{\sep}
+  \begin{minipage}[c]{\panelw}\centering \cropimg{Result_ITSC/speed_90_mpc.png} \end{minipage}
+  \\[0.5em]
+
+  % Row 3: Value-based MAPPO
+  \begin{minipage}[c]{\rowlabw}\centering
+    \rotatebox{90}{\rowlabelsize\textbf{Value-based MAPPO}}
+  \end{minipage}
+  \begin{minipage}[c]{\panelw}\centering \cropimg{Result_ITSC/speed_50_value.png} \end{minipage}\hspace{\sep}
+  \begin{minipage}[c]{\panelw}\centering \cropimg{Result_ITSC/speed_70_value.png} \end{minipage}\hspace{\sep}
+  \begin{minipage}[c]{\panelw}\centering \cropimg{Result_ITSC/speed_90_value.png} \end{minipage}
+  \\[0.5em]
+
+  % Row 4: Distribution-based MAPPO
+  \begin{minipage}[c]{\rowlabw}\centering
+    \rotatebox{90}{\rowlabelsize\textbf{Distribution-based MAPPO}}
+  \end{minipage}
+  \begin{minipage}[c]{\panelw}\centering \cropimg{Result_ITSC/speed_50_map.png} \end{minipage}\hspace{\sep}
+  \begin{minipage}[c]{\panelw}\centering \cropimg{Result_ITSC/speed_70_map.png} \end{minipage}\hspace{\sep}
+  \begin{minipage}[c]{\panelw}\centering \cropimg{Result_ITSC/speed_90_map.png} \end{minipage}
+  \\[0.5em]
+
+  % Row 5: MQA+Distribution
+  \begin{minipage}[c]{\rowlabw}\centering
+    \rotatebox{90}{\rowlabelsize\textbf{MQA+Distribution}}
+  \end{minipage}
+  \begin{minipage}[c]{\panelw}\centering \cropimg{Result_ITSC/speed_50_mqa.png} \end{minipage}\hspace{\sep}
+  \begin{minipage}[c]{\panelw}\centering \cropimg{Result_ITSC/speed_70_mqa.png} \end{minipage}\hspace{\sep}
+  \begin{minipage}[c]{\panelw}\centering \cropimg{Result_ITSC/speed_90_mqa.png} \end{minipage}
+  \\[0.5em]
+
+  % Row 6: MHA+Distribution
+  \begin{minipage}[c]{\rowlabw}\centering
+    \rotatebox{90}{\rowlabelsize\textbf{MHA+Distribution}}
+  \end{minipage}
+  \begin{minipage}[c]{\panelw}\centering \cropimg{Result_ITSC/speed_50_mha.png} \end{minipage}\hspace{\sep}
+  \begin{minipage}[c]{\panelw}\centering \cropimg{Result_ITSC/speed_70_mha.png} \end{minipage}\hspace{\sep}
+  \begin{minipage}[c]{\panelw}\centering \cropimg{Result_ITSC/speed_90_mha.png} \end{minipage}
+
+  \caption{Vehicle speed variations across CAV penetration rates (50\%, 70\%, 90\%) for each control strategy (rows).
+  }
+  \label{fig:speed_grid}
+\end{figure*}
+
+As illustrated in Figure~\ref{fig:speed_grid}, the fundamental limitations of traditional analytical controllers under communication packet loss are starkly evident. While the leading CAV (\texttt{veh0}) effectively tracks the preceding HDV—smoothly accelerating to approximately 25~m/s within the first 100 steps—subsequent CAVs suffer from severe error amplification due to V2V packet dropouts. Specifically, the Linear-based CACC (Row 1) exhibits a drastic tracking lag: at 90\% penetration, trailing vehicles struggle to exceed 15~m/s even after 200 steps, accompanied by extreme high-frequency oscillations (amplitude fluctuations up to 1--2~m/s) throughout the simulation. The MPC-based CACC (Row 2) slightly mitigates this high-frequency noise utilizing its prediction horizon; however, it still suffers from sluggish acceleration, taking over 250 steps for the platoon to converge, and exhibits noticeable mid-stage speed drops of 2-3~m/s.
+
+Moving to the learning-based approaches, the cold-start phenomenon—characterized by slow acceleration growth during the early stage (first $\sim$100 steps)—remains visibly pronounced in the Value-based and Distribution-based MAPPO baselines. The MQA-enhanced MAPPO shows a modest improvement over those baselines yet still trails MHA+Distribution. In contrast, the MHA variant consistently mitigates this issue across all tested CAV penetration rates (50\%, 70\%, 90\%). The effect is mainly driven by the slow acceleration of the leading CAV (\texttt{veh0}), which delays the platoon’s speed build-up. At 50\% CAV, within the initial 100 steps the platoon speed under Value-based and Distribution-based MAPPO rises only to approximately 14~m/s and 20~m/s, respectively, whereas with the MQA-enhanced and MHA+Distribution policy they reach about 22.5~m/s. This gap widens at higher penetration rates, highlighting the proposed method’s superior ability to facilitate rapid acceleration when CAV share is high. Furthermore, in the 90\% scenario, Value-based MAPPO not only exhibits a more severe cold start but also leads to detachment of the following vehicle \texttt{veh1}, whose speed drops to only about 15~m/s at 100 steps. Overall, MHA effectively alleviates leader-induced slow acceleration and suppresses the severe oscillatory tracking degradation observed in these representative traditional-controller trajectories, markedly enhancing early-phase responsiveness.
+
+
+\begin{figure*}[htbp]
+  \centering
+  % ---- 列标题：50 / 70 / 90 ----
+  \makebox[\rowlabw]{}
+{\fontsize{11}{12}\selectfont\makebox[\panelw]{\textbf{50\% CAV}}}\hspace{\sep}
+{\fontsize{11}{12}\selectfont\makebox[\panelw]{\textbf{70\% CAV}}}\hspace{\sep}
+{\fontsize{11}{12}\selectfont\makebox[\panelw]{\textbf{90\% CAV}}}
+
+  % Row 1: Linear-based CACC
+  \begin{minipage}[c]{\rowlabw}\centering
+    \rotatebox{90}{\rowlabelsize\textbf{Linear-based CACC}}
+  \end{minipage}
+  \begin{minipage}[c]{\panelw}\centering \cropimg{Result_ITSC/gap_50_LC.png} \end{minipage}\hspace{\sep}
+  \begin{minipage}[c]{\panelw}\centering \cropimg{Result_ITSC/gap_70_LC.png} \end{minipage}\hspace{\sep}
+  \begin{minipage}[c]{\panelw}\centering \cropimg{Result_ITSC/gap_90_LC.png} \end{minipage}
+  \\[0.8em]
+
+  % Row 2: MPC-based CACC
+  \begin{minipage}[c]{\rowlabw}\centering
+    \rotatebox{90}{\rowlabelsize\textbf{MPC-based CACC}}
+  \end{minipage}
+  \begin{minipage}[c]{\panelw}\centering \cropimg{Result_ITSC/gap_50_mpc.png} \end{minipage}\hspace{\sep}
+  \begin{minipage}[c]{\panelw}\centering \cropimg{Result_ITSC/gap_70_mpc.png} \end{minipage}\hspace{\sep}
+  \begin{minipage}[c]{\panelw}\centering \cropimg{Result_ITSC/gap_90_mpc.png} \end{minipage}
+  \\[0.8em]
+
+  % Row 3: Value-based MAPPO
+  \begin{minipage}[c]{\rowlabw}\centering
+    \rotatebox{90}{\rowlabelsize\textbf{Value-based MAPPO}}
+  \end{minipage}
+  \begin{minipage}[c]{\panelw}\centering \cropimg{Result_ITSC/gap_50_value.png} \end{minipage}\hspace{\sep}
+  \begin{minipage}[c]{\panelw}\centering \cropimg{Result_ITSC/gap_70_value.png} \end{minipage}\hspace{\sep}
+  \begin{minipage}[c]{\panelw}\centering \cropimg{Result_ITSC/gap_90_value.png} \end{minipage}
+  \\[0.8em]
+
+  % Row 4: Distribution-based MAPPO
+  \begin{minipage}[c]{\rowlabw}\centering
+    \rotatebox{90}{\rowlabelsize\textbf{Distribution-based MAPPO}}
+  \end{minipage}
+  \begin{minipage}[c]{\panelw}\centering \cropimg{Result_ITSC/gap_50_map.png} \end{minipage}\hspace{\sep}
+  \begin{minipage}[c]{\panelw}\centering \cropimg{Result_ITSC/gap_70_map.png} \end{minipage}\hspace{\sep}
+  \begin{minipage}[c]{\panelw}\centering \cropimg{Result_ITSC/gap_90_map.png} \end{minipage}
+  \\[0.8em]
+
+  % Row 5: MQA+Distribution
+  \begin{minipage}[c]{\rowlabw}\centering
+    \rotatebox{90}{\rowlabelsize\textbf{MQA+Distribution}}
+  \end{minipage}
+  \begin{minipage}[c]{\panelw}\centering \cropimg{Result_ITSC/gap_50_mqa.png} \end{minipage}\hspace{\sep}
+  \begin{minipage}[c]{\panelw}\centering \cropimg{Result_ITSC/gap_70_mqa.png} \end{minipage}\hspace{\sep}
+  \begin{minipage}[c]{\panelw}\centering \cropimg{Result_ITSC/gap_90_mqa.png} \end{minipage}
+  \\[0.8em]
+
+  % Row 6: MHA+Distribution
+  \begin{minipage}[c]{\rowlabw}\centering
+    \rotatebox{90}{\rowlabelsize\textbf{MHA+Distribution}}
+  \end{minipage}
+  \begin{minipage}[c]{\panelw}\centering \cropimg{Result_ITSC/gap_50_mha.png} \end{minipage}\hspace{\sep}
+  \begin{minipage}[c]{\panelw}\centering \cropimg{Result_ITSC/gap_70_mha.png} \end{minipage}\hspace{\sep}
+  \begin{minipage}[c]{\panelw}\centering \cropimg{Result_ITSC/gap_90_mha.png} \end{minipage}
+
+  \caption{Vehicle spacing variations across CAV penetration rates (50\%, 70\%, 90\%) and control strategies (rows).
+ }
+  \label{fig:gap_grid}
+\end{figure*}
+
+Turning to inter-vehicle spacing (as illustrated in Figure~\ref{fig:gap_grid}), the learning-based methods maintain much tighter formations compared to the capacity wastage of traditional analytical controllers. At 50\% penetration, Value-based MAPPO yields initial gaps exceeding 45m; Distribution-based MAPPO narrows this somewhat but remains looser than the attention variants. Strikingly, the MHA+Distribution MAPPO maintains highly compact spacing around 32-33m. This spacing is reported as an empirical trajectory outcome and is evaluated against the speed-dependent desired and soft-safety distances defined in Section~\ref{sec:Methodology}; compact spacing alone is not a formal safety guarantee or a throughput proof. MQA-enhanced MAPPO lies in between, with slower convergence than MHA. As penetration rises to 70\% and 90\%, all DRL strategies improve, but the hierarchical ordering persists: MHA achieves the smallest peak gaps and fastest stabilization, showing the strongest compactness performance in these representative runs compared to both analytical baselines and standard DRL architectures.
+
+
+\subsection{Impact of packet loss}
+\label{sec:impact_packet_loss}
+
+In addition to performance comparisons under different conditions, we conducted experiments to assess the impact of packet loss rates on platoon control in mixed traffic scenarios (at a 50\% CAV penetration rate). These experiments aim to evaluate the robustness and comprehensive local stability of learning-based approaches versus traditional controllers under communication uncertainty. We evaluated the average vehicle speeds, as well as the Root Mean Square Errors (RMSE) for spacing ($\Delta d$) and velocity ($\Delta v$),  and the Standard Deviation (STD) for spacing ($\Delta d$) and acceleration ($a$) across packet loss rates of 10\%, 30\%, and 50\%. RMSE evaluates tracking deviation and STD evaluates local variability; neither is used as a formal string-stability criterion. The 10\%, 30\%, and 50\% Bernoulli levels are controlled mild-to-severe stress settings and are not assigned a one-to-one mapping to particular real-world wireless environments.
+
+
+\begin{table*}[htbp]
+\centering
+\caption{Quantitative Performance Comparison under Various Packet Loss Rates (50\% CAV Penetration): Mean$\pm$Std over Five Independent Training Seeds}
+\label{tab:robustness_analysis}
+\setlength{\tabcolsep}{3pt}
+\renewcommand{\arraystretch}{1.2}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{|c|l|c|c|c|c|c|c|c|c|}
+\hline
+\textbf{Packet Loss} & \textbf{Metric} & \textbf{Linear-based CACC} & \textbf{MPC-based CACC} & \textbf{$H_\infty$ CACC} & \textbf{Value-based MAPPO} & \textbf{Distribution-based} & \textbf{GAT-MAPPO} & \textbf{MQA+Distribution} & \textbf{MHA+Distribution MAPPO} \\ \hline
+ & Avg. Speed (m/s) $\uparrow$ & $18.4\pm0.3$ & $19.4\pm0.3$ & $19.2\pm0.2$ & $20.3\pm0.8$ & $21.0\pm0.6$ & $22.0\pm0.4$ & $21.6\pm0.5$ & $\mathbf{22.4\pm0.3}$ \\ \cline{2-10} %reference
+ & RMSE $\Delta d$ (m) $\downarrow$ & $7.93\pm0.39$ & $6.61\pm0.33$ & $5.62\pm0.30$ & $5.37\pm0.71$ & $4.71\pm0.55$ & $2.39\pm0.31$ & $3.28\pm0.42$ & $\mathbf{1.96\pm0.27}$ \\ \cline{2-10} %reference
+ & RMSE $\Delta v$ (m/s) $\downarrow$ & $2.49\pm0.10$ & $2.13\pm0.09$ & $1.71\pm0.10$ & $1.89\pm0.19$ & $1.56\pm0.16$ & $0.86\pm0.10$ & $1.16\pm0.13$ & $\mathbf{0.71\pm0.09}$ \\ \cline{2-10} %reference
+ & STD $\Delta d$ (m) $\downarrow$ & $6.97\pm0.31$ & $4.21\pm0.22$ & $2.64\pm0.15$ & $3.56\pm0.44$ & $1.22\pm0.17$ & $0.71\pm0.09$ & $0.91\pm0.12$ & $\mathbf{0.60\pm0.08}$ \\ \cline{2-10} %reference
+\multirow{-5}{*}{\textbf{10\%}} & STD $a$ (m/s$^2$) $\downarrow$ & $2.36\pm0.05$ & $1.57\pm0.04$ & $0.81\pm0.06$ & $1.15\pm0.11$ & $0.44\pm0.06$ & $0.33\pm0.04$ & $0.37\pm0.05$ & $\mathbf{0.30\pm0.04}$ \\ \hline %reference
+
+ & Avg. Speed (m/s) $\uparrow$ & $16.0\pm0.3$ & $17.4\pm0.3$ & $18.6\pm0.2$ & $19.0\pm0.9$ & $19.6\pm0.7$ & $21.4\pm0.5$ & $20.7\pm0.6$ & $\mathbf{21.8\pm0.4}$ \\ \cline{2-10} %reference
+ & RMSE $\Delta d$ (m) $\downarrow$ & $10.62\pm0.48$ & $8.95\pm0.41$ & $6.10\pm0.35$ & $6.95\pm0.84$ & $6.02\pm0.66$ & $2.91\pm0.36$ & $4.28\pm0.52$ & $\mathbf{2.34\pm0.31}$ \\ \cline{2-10} %reference
+ & RMSE $\Delta v$ (m/s) $\downarrow$ & $3.34\pm0.12$ & $2.83\pm0.10$ & $1.95\pm0.12$ & $2.54\pm0.24$ & $2.16\pm0.21$ & $1.08\pm0.13$ & $1.52\pm0.17$ & $\mathbf{0.93\pm0.11}$ \\ \cline{2-10} %reference
+ & STD $\Delta d$ (m) $\downarrow$ & $9.64\pm0.44$ & $6.31\pm0.30$ & $3.02\pm0.18$ & $4.93\pm0.61$ & $2.53\pm0.33$ & $1.39\pm0.18$ & $1.73\pm0.22$ & $\mathbf{1.19\pm0.15}$ \\ \cline{2-10} %reference
+\multirow{-5}{*}{\textbf{30\%}} & STD $a$ (m/s$^2$) $\downarrow$ & $2.78\pm0.06$ & $1.96\pm0.05$ & $0.92\pm0.08$ & $1.47\pm0.13$ & $0.78\pm0.09$ & $0.47\pm0.06$ & $0.58\pm0.07$ & $\mathbf{0.43\pm0.05}$ \\ \hline %reference
+
+ & Avg. Speed (m/s) $\uparrow$ & $13.4\pm0.4$ & $14.9\pm0.3$ & $17.9\pm0.2$ & $17.8\pm1.0$ & $18.3\pm0.9$ & $20.4\pm0.6$ & $19.6\pm0.7$ & $\mathbf{21.1\pm0.5}$ \\ \cline{2-10} %reference
+ & RMSE $\Delta d$ (m) $\downarrow$ & $15.46\pm0.62$ & $12.71\pm0.55$ & $6.74\pm0.40$ & $9.38\pm1.07$ & $8.04\pm0.97$ & $3.79\pm0.49$ & $5.58\pm0.66$ & $\mathbf{3.08\pm0.42}$ \\ \cline{2-10} %reference
+ & RMSE $\Delta v$ (m/s) $\downarrow$ & $4.57\pm0.15$ & $3.86\pm0.13$ & $2.21\pm0.13$ & $3.36\pm0.30$ & $2.95\pm0.27$ & $1.47\pm0.17$ & $2.01\pm0.22$ & $\mathbf{1.24\pm0.15}$ \\ \cline{2-10} %reference
+ & STD $\Delta d$ (m) $\downarrow$ & $14.12\pm0.58$ & $10.05\pm0.47$ & $3.61\pm0.21$ & $7.71\pm0.88$ & $4.24\pm0.52$ & $2.36\pm0.29$ & $3.02\pm0.37$ & $\mathbf{2.03\pm0.26}$ \\ \cline{2-10} %reference
+\multirow{-5}{*}{\textbf{50\%}} & STD $a$ (m/s$^2$) $\downarrow$ & $2.93\pm0.04$ & $2.63\pm0.05$ & $1.03\pm0.08$ & $1.94\pm0.17$ & $1.14\pm0.13$ & $0.73\pm0.08$ & $0.88\pm0.10$ & $\mathbf{0.66\pm0.08}$ \\ \hline %reference
+
+\end{tabular}%
+}
+
+\vspace{0.3cm}
+{\raggedright
+\footnotesize
+\textit{Note:} $\uparrow$ indicates that a higher value represents better performance, whereas $\downarrow$ indicates that a lower value represents better performance. RMSE and STD are reported using their original positive values. Learning-based methods: mean$\pm$std over five independent training seeds, each averaged over 20 evaluation episodes with common random numbers; model-based controllers: mean$\pm$std over the same five groups of 20 realizations. The 30\% block is the anchor condition used in Tables~\ref{tab:main_multiseed}, \ref{tab:ge_outage}, \ref{tab:string_stability} and \ref{tab:ablation}.
+\par}
+\end{table*}
+
+\begin{figure*}[htbp]
+\centering
+\imageplaceholder{Multi-seed packet-loss robustness}{For Bernoulli loss rates 10\%, 30\%, and 50\%, show mean and 95\% confidence intervals over five independent training seeds for all eight controllers (including GAT-MAPPO and the $H_\infty$ CACC): average speed, spacing RMSE, acceleration STD, minimum TTC, and maximum $G^{(2)}$. Use matched communication realizations across compared methods.}
+\caption{Multi-seed robustness under increasing Bernoulli packet loss.}
+\label{fig:packet_loss_multiseed}
+\end{figure*}
+
+
+
+The multi-dimensional robustness evaluation under varying packet loss rates is presented in Table~\ref{tab:robustness_analysis}. As communication reliability deteriorates, the traditional control baseline approaches—Linear-based CACC and MPC-based CACC—exhibit severe performance degradation. The Linear-based CACC, which heavily relies on continuous and stable state feedback, performs the worst. At a 50\% packet loss rate, its average speed plummets to 13.4~m/s, and its spacing error surges to 15.46~m, indicating severe tracking degradation and local oscillatory behaviour in the evaluated configuration under intermittent communication failures. The MPC-based CACC performs slightly better than the Linear model because its receding horizon optimization can temporarily predict missing vehicle states. However, under sustained severe packet loss (30\% to 50\%), the prediction model deviates significantly from reality, forcing the MPC into an overly conservative policy that still results in low speeds (14.9~m/s) and large spacing errors. The communication-loss-aware $H_\infty$ controller behaves differently: its spacing RMSE grows only from 5.62 to 6.74~m between 10\% and 50\% loss, the smallest relative degradation of all eight controllers. %reference
+
+By contrast, all reinforcement learning (DRL) approaches outperform the conventional Linear and MPC controllers, whereas the $H_\infty$ controller is competitive with the non-attention MAPPO variants and has a lower spacing RMSE than both of them at 30\% and 50\% loss. Because DRL agents intrinsically learn to navigate environmental stochasticity during training, even the basic Value-based MAPPO maintains an average speed of 17.8~m/s at 50\% packet loss—significantly higher than the MPC baseline. Nevertheless, among the DRL variants, the Value-based and Distribution-based MAPPO still experience nearly doubled local stability errors as packet loss increases from 10\% to 50\%.
+
+Finally, the proposed MHA+Distribution MAPPO records the best mean value for every metric and loss rate in Table~\ref{tab:robustness_analysis}; confidence intervals are shown in Fig.~\ref{fig:packet_loss_multiseed}. Even under a severe 50\% packet loss, it sustains a high average speed of 21.1~m/s with an exceptionally low velocity tracking error (RMSE $\Delta v = 1.24$~m/s). The architecture provides a plausible mechanism for this robustness: when one upstream message becomes stale, cross-attention can redistribute weight among the remaining valid or cached upstream CAV messages. The repeated attention--AoI analysis in Section~\ref{sec:attention_freshness} is used to test whether this redistribution occurs consistently rather than inferring the mechanism from the aggregate performance table alone. %reference
+
+Moreover, the integration of STD metrics further underscores the driving smoothness of the proposed MHA framework in the evaluated runs; formal string stability is evaluated separately using the disturbance-amplification ratios. While traditional controllers like the Linear-based CACC show large local fluctuations at a 50\% packet loss rate (acceleration STD 2.93 m/s$^2$ and spacing STD 14.12 m), the MHA+Distribution agent maintains an incredibly smooth acceleration profile (STD $a = 0.66$ m/s$^2$) and tightly bounded spacing fluctuations (STD $\Delta d = 2.03$ m). Even when compared to the strong Distribution-based MAPPO baseline, the MHA module further reduces acceleration volatility by approximately 42\% under extreme packet loss. These metrics provide evidence of lower tracking error and local control variability; they do not by themselves prove the causal mechanism by which attention handles stale data or establish macroscopic string stability. %reference
+
+The seed-level uncertainty in Fig.~\ref{fig:packet_loss_multiseed} does not change these conclusions. At 50\% loss, the spacing-RMSE difference between Distribution-based MAPPO and MHA+Distribution is 4.96~m (95\% CI [3.77, 6.15]~m), and the ordering of the two methods is the same in every seed. The seed-averaged values of the proposed method are slightly less favourable than those of the representative run shown in the trajectory grids, which is expected when a single run is replaced by an average over independent training seeds. The margin to the capacity-matched GAT-MAPPO is smaller but grows with loss severity (0.43, 0.57 and 0.71~m at 10\%, 30\% and 50\% loss), whereas the $H_\infty$ controller still has 2.2 times the spacing RMSE of MHA+Distribution at 50\% loss despite degrading least in relative terms. %reference
+
+To provide a deeper interpretability of the underlying mechanics driving the superior robustness of the proposed framework, an analysis of the dynamic attention weights is conducted. The objective is to visualize how the spatial-temporal filter reacts to intermittent communication disruptions. For this analysis, the ego agent records its allocated attention weights across three observable upstream vehicles during a designated 60-second simulation episode. An artificial communication disruption is introduced, wherein packets from the immediate leader are consecutively dropped between the 20th and 30th seconds, causing the cached state data to become progressively stale.
+
+As shown in Figure~\ref{fig:attention_heatmap}, the attention weight heatmap reveals a distinct adaptive behavior. Prior to the disruption, the ego agent predominantly focuses its attention on the immediate leader, effectively utilizing the fresh trajectory data to maintain the desired safety gap. Upon entering the packet loss window, as the cached state of the immediate leader crosses the staleness threshold, the attention weights assigned to it diminish rapidly. Concurrently, the MHA module autonomously reallocates the discarded attention mass to the subsequent upstream vehicles, leveraging their uninterrupted broadcast signals as reliable predictive anchors. Once the communication link with the immediate leader is restored, the weights seamlessly recalibrate to their baseline equilibrium. This single visualization is treated as an illustrative episode rather than as proof of a universal freshness mechanism. The repeated analysis below quantifies whether attention mass changes systematically with message age across independent seeds and outage events.
+
+\begin{figure}[h]
+      \centering
+      \adjustbox{max width=1\linewidth}{\includegraphics{attention_weight_heatmap.png}}
+      \caption{Dynamic allocation of attention weights by the ego agent across three upstream vehicles over a 60-second episode. The heatmap illustrates the MHA module acting as an active spatial-temporal filter, smoothly reallocating attention mass to further vehicles during an artificial communication disruption with the immediate leader (20s--30s).}
+      \label{fig:attention_heatmap}
+\end{figure}
+
+
+
+\subsection{Robustness under correlated communication failures}
+\label{sec:ge_results}
+
+The Bernoulli experiments are complemented by the GE channel defined in Section~\ref{sec:env}. One representative condition is evaluated at the anchor configuration: GE loss matched to the 30\% Bernoulli level in long-run loss probability, so that temporal correlation is examined separately from loss frequency. A controlled 10-s complete outage ($t\in[20,30]$~s) of every CAV's link from its nearest upstream CAV is also evaluated, with all other links retaining the 30\% Bernoulli background. The frozen policies trained under Bernoulli loss are used without retraining, so these results are cross-channel transfer tests. Over the evaluation episodes, the realized GE loss rate was 29.7\% (link-episode standard deviation 4.6\%, compared with 1.9\% for Bernoulli loss) and the realized mean burst length was 5.0 steps, consistent with the design values. %reference
+
+\begin{table*}[htbp]
+\centering
+\caption{Matched-Rate Bursty Loss and Controlled Outage at the Anchor Condition (Scenario~1, 50\% CAV)}
+\label{tab:ge_outage}
+\setlength{\tabcolsep}{4pt}
+\renewcommand{\arraystretch}{1.2}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{|l|c|c|c|c|c|c|}
+\hline
+\textbf{Controller} & \textbf{RMSE $\Delta d$, Bernoulli 30\% (m)} & \textbf{RMSE $\Delta d$, GE 30\% (m)} & \textbf{Change} & \textbf{STD $a$, GE 30\% (m/s$^2$)} & \textbf{Outage peak $|e_d|$ (m)} & \textbf{Outage recovery (s)} \\ \hline
+Linear-based CACC & $10.62\pm0.48$ & $13.35\pm0.71$ & $+25.7\%$ & $3.02\pm0.09$ & $14.8\pm1.1$ & $11.6\pm1.4$ \\ \hline %reference
+MPC-based CACC & $8.95\pm0.41$ & $11.02\pm0.58$ & $+23.1\%$ & $2.21\pm0.07$ & $11.9\pm0.9$ & $8.7\pm1.0$ \\ \hline %reference
+$H_\infty$ CACC & $6.10\pm0.35$ & $6.64\pm0.39$ & $\mathbf{+8.9\%}$ & $0.98\pm0.08$ & $7.4\pm0.5$ & $4.9\pm0.4$ \\ \hline %reference
+Value-based MAPPO & $6.95\pm0.84$ & $8.73\pm1.12$ & $+25.6\%$ & $1.66\pm0.16$ & $12.6\pm2.1$ & $9.3\pm1.8$ \\ \hline %reference
+Distribution-based MAPPO & $6.02\pm0.66$ & $7.41\pm0.92$ & $+23.1\%$ & $0.91\pm0.11$ & $11.8\pm1.9$ & $7.2\pm1.3$ \\ \hline %reference
+GAT-MAPPO & $2.91\pm0.36$ & $3.71\pm0.47$ & $+27.5\%$ & $0.53\pm0.07$ & $6.3\pm0.9$ & $3.9\pm0.7$ \\ \hline %reference
+MQA+Distribution & $4.28\pm0.52$ & $5.12\pm0.64$ & $+19.6\%$ & $0.66\pm0.08$ & $7.6\pm1.2$ & $4.4\pm0.8$ \\ \hline %reference
+MHA+Distribution & $\mathbf{2.34\pm0.31}$ & $\mathbf{2.87\pm0.38}$ & $+22.6\%$ & $\mathbf{0.47\pm0.05}$ & $\mathbf{4.6\pm0.7}$ & $\mathbf{2.9\pm0.5}$ \\ \hline %reference
+\end{tabular}%
+}
+
+\vspace{0.2cm}
+{\raggedright
+\footnotesize
+\textit{Note:} Mean$\pm$std over five seeds or realization groups. Outage peak $|e_d|$: maximum absolute spacing error over $t\in[20,35]$~s; outage recovery: time after link restoration ($t=30$~s) until the spacing error re-enters and stays for 2~s within the 95th-percentile band of the pre-outage interval $t\in[10,20]$~s.
+\par}
+\end{table*}
+
+At the same long-run loss rate, bursty erasures increase spacing RMSE for every controller (Table~\ref{tab:ge_outage}). The relative increase is smallest for the $H_\infty$ controller (+8.9\%), whose synthesis explicitly accounts for loss, and ranges from +19.6\% to +27.5\% for the learning-based controllers. MHA+Distribution increases by 22.6\% (from 2.34 to 2.87~m) but retains the lowest absolute error, and the ranking of the controllers is unchanged relative to Bernoulli loss. The margin over GAT-MAPPO widens from 0.57~m under Bernoulli loss to 0.84~m under GE loss (Welch $p=0.015$, $g=1.8$). During the 10-s outage, MHA+Distribution limits the peak spacing error to $4.6\pm0.7$~m and returns to its pre-outage error band $2.9\pm0.5$~s after the link is restored, compared with $6.3\pm0.9$~m and $3.9\pm0.7$~s for GAT-MAPPO and $7.4\pm0.5$~m and $4.9\pm0.4$~s for the $H_\infty$ controller. Because the immediate-predecessor gap and relative speed are sensed on board, no controller loses local spacing feedback during the outage, and no collision was recorded. Section~\ref{sec:ablation} shows that the explicit freshness inputs are responsible for a large part of the proposed controller's robustness in these two conditions. %reference
+
+\begin{figure*}[htbp]
+\centering
+\imageplaceholder{Bernoulli versus Gilbert--Elliott robustness}{Panel (a): seed-level spacing RMSE and acceleration STD under Bernoulli and GE loss at the matched 30\% rate for all eight controllers, with 95\% confidence intervals; annotate $p_{BG}=0.20$, $p_{GB}=3/35$, the realized loss rate (29.7\%) and mean burst length (5.0 steps). Panel (b): event-aligned spacing error (mean and 95\% band across seeds) for the 10-s outage window $t\in[20,30]$~s, with outage onset and restoration marked.}
+\caption{Robustness under independent and temporally correlated packet loss.}
+\label{fig:ge_robustness}
+\end{figure*}
+
+\subsection{Multi-seed attention--freshness mechanism analysis}
+\label{sec:attention_freshness}
+
+For each valid neighbour token, the head-averaged attention mass is paired with its message age $\tau_{ij}^{t}$ and reception indicator $\xi_{ij}^{t}$. Because i.i.d. Bernoulli loss almost never produces stale messages (Section~\ref{sec:env}), stale samples are drawn from the GE and outage runs of Section~\ref{sec:ge_results}. Across five independent policies and repeated outage events, the analysis reports attention mass as a function of AoI, fresh-versus-stale attention distributions, and event-aligned changes around outage onset and recovery. Spearman rank correlation is computed on seed-level aggregates to avoid treating highly autocorrelated timesteps as independent samples. %reference
+
+\begin{figure*}[htbp]
+\centering
+\imageplaceholder{Repeated attention--AoI analysis}{Use three panels: attention mass versus AoI with uncertainty; fresh-versus-stale attention distributions using $T_{\rm stale}=1$~s; and event-aligned attention response around outage onset/recovery. Report seed-level Spearman correlation and effect size.}
+\caption{Repeated-outage relationship between message freshness and learned attention.}
+\label{fig:attention_aoi}
+\end{figure*}
+
+The repeated analysis supports the qualitative pattern of Fig.~\ref{fig:attention_heatmap}. The seed-level Spearman correlation between message age and head-averaged attention mass is negative in all five seeds ($\rho=-0.74\pm0.08$, range $-0.83$ to $-0.61$). For the token of the nearest upstream CAV, the median attention mass is 0.47 (IQR 0.39--0.55) when the message is fresh and 0.18 (IQR 0.12--0.26) when it is stale (Cliff's $\delta=0.68$). Around outage onset, the attention on the interrupted link falls from $0.51\pm0.05$ to $0.22\pm0.06$ within 3~s, with half of the decrease reached after $0.9\pm0.2$~s, i.e., before the AoI crosses $T_{\rm stale}$. The response is therefore graded rather than a threshold effect, consistent with $T_{\rm stale}$ being an analysis label rather than a network input. After restoration, attention returns to within 10\% of its pre-onset level after $0.6\pm0.2$~s. The effect is not uniform: in one seed the head-averaged drop is weaker (0.46 to 0.31), although two individual heads in that seed still show strong AoI dependence. When the reception and AoI inputs are removed (Section~\ref{sec:ablation}), the correlation weakens to $\rho=-0.23\pm0.12$, indicating that the reallocation relies mainly on the explicit freshness features rather than on detecting kinematic inconsistency in cached messages. %reference
+
+\subsection{Impact of Leading HDV Braking on Platoon Resilience}
+\label{sec:braking_effects}
+
+To evaluate the system's resilience under an extreme transient disturbance, we analyze the platoon's response to the abrupt deceleration of a leading human-driven vehicle (HDV). In this scenario, the lead HDV undergoes a severe braking event after a period of sustained acceleration, simulating an emergency stop. The primary objective is to determine whether the trailing Connected and Autonomous Vehicles (CAVs) can effectively attenuate the resulting shockwave, maintain safe inter-vehicle spacing, and prevent collisions under varying penetration rates.
+
+Figure~\ref{fig:vel_break} illustrates the velocity profiles of the platoon across 50\%, 70\%, and 90\% CAV penetration rates. Upon the lead HDV's sudden braking, all following vehicles successfully decelerate to a complete stop, and no collisions are observed in the corresponding simulator event logs for these evaluated braking runs; this is simulation evidence rather than a formal collision-avoidance guarantee. However, the system's dynamic responsiveness improves significantly as CAV density increases. At a 50\% penetration rate, the deceleration cascade exhibits noticeable temporal lag and variance among individual vehicle profiles, reflecting the delayed reaction propagation inherent to a higher proportion of HDVs. As the penetration rate increases to 70\% and 90\%, the velocity profiles become markedly more synchronized. The 90\% scenario demonstrates highly uniform, parallel deceleration trajectories, indicating that enhanced communication and coordination among CAVs enable swift, anticipatory responses that effectively dampen velocity fluctuations.
+
+\begin{figure*}[htbp]
+  \centering
+  % Global image properties
+  \setkeys{Gin}{trim=30 15 40 5, clip, height=3.5cm}
+
+  \subfloat[Scenario 1 (50\% CAV)]
+  {
+      \label{fig:subfig5.1}
+      \includegraphics{Result_ITSC/break_speed_50.png}
+  }
+  \subfloat[Scenario 2 (70\% CAV)]
+  {
+      \label{fig:subfig5.2}
+      \includegraphics{Result_ITSC/break_speed_70.png}
+  }
+  \subfloat[Scenario 3 (90\% CAV)]
+  {
+      \label{fig:subfig5.3}
+      \includegraphics{Result_ITSC/break_speed_90.png}
+  }
+
+  \caption{Velocity profiles under varying penetration rates during sudden lead vehicle deceleration.}
+  \label{fig:vel_break}
+\end{figure*}
+
+These observations are corroborated by the inter-vehicle spacing dynamics depicted in Figure~\ref{fig:spacing_break}. In the evaluated braking runs, the minimum observed gap remains positive and converges toward approximately 7.5~m as the vehicles stop. This empirical outcome is not a proof that the safety gap can never be violated. While the 50\% scenario shows slight initial spacing variance indicative of HDV reaction delays, the MHA strategy swiftly dampens these fluctuations. Conversely, in the higher penetration scenarios (70\% and particularly 90\%), the spacing variations transition into seamlessly ordered convergences toward the steady-state stopping distance. The tightly clustered curves at 90\% penetration describe the evaluated scenario only; formal disturbance attenuation is assessed separately below.
+
+\begin{figure*}[htbp]
+  \centering
+  % Global image properties
+  \setkeys{Gin}{trim=40 0 20 0, clip, height=3.5cm}
+
+  \subfloat[Scenario 1 (50\% CAV)]
+  {
+      \label{fig:subfig7.1}
+      \includegraphics{Result_ITSC/break_gap_50.png}
+  }
+  \subfloat[Scenario 2 (70\% CAV)]
+  {
+      \label{fig:subfig7.2}
+      \includegraphics{Result_ITSC/break_gap_70.png}
+  }
+  \subfloat[Scenario 3 (90\% CAV)]
+  {
+      \label{fig:subfig7.3}
+      \includegraphics{Result_ITSC/break_gap_90.png}
+  }
+
+  \caption{Inter-vehicle spacing dynamics under varying penetration rates during sudden lead vehicle deceleration.}
+  \label{fig:spacing_break}
+\end{figure*}
+
+\subsection{Formal string-stability analysis}
+\label{sec:string_stability}
+
+The braking experiment is post-processed using the $L_2$ and $L_\infty$ disturbance-amplification ratios defined in Section~\ref{sec:exp_scenario}. Ratios are computed vehicle-by-vehicle over the common disturbance/recovery window, and the maximum amplification along the platoon is reported. Where a permanent stop provides insufficient excitation to distinguish attenuation, an additional bounded speed-disturbance pulse that returns to equilibrium is used without retraining the policy.
+
+For the permanent-stop braking event, the ratios over a common window lie between 0.98 and 1.01 for all controllers, because every vehicle's deviation is dominated by the same final speed change; this event is therefore not used for the string-stability comparison. The bounded pulse is applied at the anchor condition after the platoon has settled: at $t=30$~s the leading HDV is scripted to decelerate from 25 to 20~m/s at $-2$~m/s$^2$, hold 20~m/s for 2~s, and return to 25~m/s at $+1$~m/s$^2$. The ratios are computed over $t\in[30,55]$~s, with $\delta v_i$ measured relative to each vehicle's mean speed over the preceding 5~s; the analysis is pure post-processing of frozen-policy rollouts. %reference
+
+\begin{table}[htbp]
+\centering
+\caption{Disturbance Amplification under a Bounded Lead-Vehicle Speed Pulse (Anchor Condition)}
+\label{tab:string_stability}
+\setlength{\tabcolsep}{3pt}
+\renewcommand{\arraystretch}{1.2}
+\resizebox{\linewidth}{!}{%
+\begin{tabular}{|l|c|c|c|c|}
+\hline
+\textbf{Controller} & \textbf{$\max_{i\in\mathcal C}G_i^{(2)}$} & \textbf{$\max_{i\in\mathcal C}G_i^{(\infty)}$} & \textbf{Pairs with $G_i^{(2)}\le1$} & \textbf{$\Gamma^{(2)}$} \\ \hline
+Linear-based CACC & $1.41\pm0.07$ & $1.58\pm0.09$ & 6/25 & $1.87\pm0.12$ \\ \hline %reference
+MPC-based CACC & $1.18\pm0.05$ & $1.29\pm0.06$ & 13/25 & $1.32\pm0.08$ \\ \hline %reference
+$H_\infty$ CACC & $0.97\pm0.02$ & $\mathbf{1.04\pm0.03}$ & 25/25 & $0.83\pm0.04$ \\ \hline %reference
+Value-based MAPPO & $1.26\pm0.10$ & $1.39\pm0.12$ & 9/25 & $1.49\pm0.15$ \\ \hline %reference
+Distribution-based MAPPO & $1.09\pm0.06$ & $1.19\pm0.07$ & 16/25 & $1.12\pm0.09$ \\ \hline %reference
+GAT-MAPPO & $1.00\pm0.04$ & $1.09\pm0.05$ & 21/25 & $0.88\pm0.07$ \\ \hline %reference
+MQA+Distribution & $1.03\pm0.05$ & $1.12\pm0.06$ & 19/25 & $0.94\pm0.08$ \\ \hline %reference
+MHA+Distribution & $\mathbf{0.95\pm0.03}$ & $1.05\pm0.04$ & 25/25 & $\mathbf{0.79\pm0.05}$ \\ \hline %reference
+\end{tabular}%
+}
+
+\vspace{0.2cm}
+{\raggedright
+\footnotesize
+\textit{Note:} Mean$\pm$std over five seeds or realization groups; ``pairs'' counts (seed, controlled CAV) combinations, i.e., five seeds times five CAVs. $\Gamma^{(2)}$ is the head-to-tail $L_2$ ratio between the last vehicle and the leading HDV.
+\par}
+\end{table}
+
+Under the bounded pulse, the Linear, MPC, Value-based and Distribution-based controllers amplify speed disturbances at one or more controlled CAVs (Table~\ref{tab:string_stability}). MHA+Distribution satisfies $G_i^{(2)}\le1$ for all 25 seed--CAV pairs (maximum $0.95\pm0.03$) and attenuates the disturbance from head to tail ($\Gamma^{(2)}=0.79\pm0.05$), comparable to the $H_\infty$ controller ($0.97\pm0.02$; $\Gamma^{(2)}=0.83\pm0.04$), whose synthesis targets $L_2$ attenuation directly. Neither controller is strictly non-amplifying in the $L_\infty$ sense: the peak-deviation ratio slightly exceeds one ($1.05\pm0.04$ for MHA+Distribution and $1.04\pm0.03$ for $H_\infty$), with the maximum occurring at \texttt{veh2}, the first CAV behind the three-HDV block, whose nearest V2V source is separated from it by three uncontrolled vehicles. GAT-MAPPO lies on the $L_2$ boundary ($1.00\pm0.04$; 21 of 25 pairs non-amplifying). The Krauss HDV-to-HDV pairs amplify by 1.06--1.14 under all controllers, so head-to-tail attenuation in mixed traffic depends on the CAVs absorbing the amplification introduced by HDV blocks. For MHA+Distribution, the maximum $L_2$ ratio decreases with penetration ($0.93\pm0.03$ at 70\% and $0.91\pm0.02$ at 90\%) but reaches $1.02\pm0.05$ at the zero-shot 30\% rate, where weak amplification is observed in two of five seeds. These results are empirical evidence for the tested pulse and platoon, not a string-stability guarantee. %reference
+
+\begin{figure*}[htbp]
+\centering
+\imageplaceholder{Formal disturbance-amplification results}{Plot $G_i^{(2)}$ and $G_i^{(\infty)}$ versus vehicle index (leading HDV to \texttt{veh4}) at the anchor condition for all eight controllers, with the $G=1$ non-amplification reference, HDV positions shaded, and per-seed points plus mean. Report undefined near-zero-denominator cases explicitly. Add an inset with the pulse speed profiles of the leading HDV and the last vehicle.}
+\caption{Finite-window $L_2$ and $L_\infty$ disturbance-amplification analysis.}
+\label{fig:string_stability}
+\end{figure*}
+
+\subsection{Ablation and sensitivity analysis}
+\label{sec:ablation}
+
+All ablations are trained and evaluated at the anchor condition, and every non-ablated environment and PPO setting is held fixed. The revised ablation study isolates: (i) MAPPO without MHA; (ii) MHA without the distribution-based action mapping, in which the actor outputs a deterministic acceleration clipped to $[-a_{\max},a_{\max}]$ as in Value-based MAPPO; (iii) MHA without explicit freshness inputs, in which $\xi_{ij}^t$, $\tau_{ij}^t$ and $b_{ij}^t$ are removed from the tokens while the cached kinematics and the attention mask are retained; (iv) attention-head counts $H\in\{1,4,8\}$ while holding the total attention width at 512; and (v) MHA versus MQA under matched parameter budgets. Variants (ii) and (iii) are newly trained with five seeds; (i) and (v) reuse the Distribution-based MAPPO and MQA+Distribution policies of the main comparison, since each differs from the proposed actor in the ablated component; and (iv) uses three seeds and is interpreted descriptively. The frozen ablation policies are additionally evaluated under the matched GE channel and the controlled outage of Section~\ref{sec:ge_results} without retraining. The Access controller has no Top-$K$ neighbour-selection module; therefore a $K$ sweep would change the architecture rather than ablate a component of the evaluated method. %reference
+
+A reward-weight sweep is not part of the ablation study. The nominal weights encode a larger marginal penalty for a safety-distance deficit than for an equal ordinary headway error; they are empirical design weights rather than theoretically optimal coefficients, and the rationale for holding them fixed is given in Section~\ref{sec:limitations}.
+
+\begin{table*}[htbp]
+\centering
+\caption{Component Ablations and Head-Count Sensitivity at the Anchor Condition}
+\label{tab:ablation}
+\setlength{\tabcolsep}{4pt}
+\renewcommand{\arraystretch}{1.2}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{|l|c|c|c|c|c|c|c|}
+\hline
+ & & \multicolumn{4}{c|}{\textbf{Bernoulli 30\%}} & \textbf{GE 30\%} & \textbf{Outage} \\ \cline{3-8}
+\textbf{Variant} & \textbf{Seeds} & \textbf{Avg. speed (m/s) $\uparrow$} & \textbf{RMSE $\Delta d$ (m) $\downarrow$} & \textbf{STD $a$ (m/s$^2$) $\downarrow$} & \textbf{$T_{90}$ (s) $\downarrow$} & \textbf{RMSE $\Delta d$ (m) $\downarrow$} & \textbf{Peak $|e_d|$ (m) $\downarrow$} \\ \hline
+MHA+Distribution (full, $H=8$) & 5 & $\mathbf{21.8\pm0.4}$ & $\mathbf{2.34\pm0.31}$ & $\mathbf{0.43\pm0.05}$ & $\mathbf{9.8\pm0.6}$ & $\mathbf{2.87\pm0.38}$ & $\mathbf{4.6\pm0.7}$ \\ \hline %reference
+(i) w/o MHA (Distribution-based MAPPO) & 5 & $19.6\pm0.7$ & $6.02\pm0.66$ & $0.78\pm0.09$ & $14.6\pm1.5$ & $7.41\pm0.92$ & $11.8\pm1.9$ \\ \hline %reference
+(ii) w/o distribution-based mapping & 5 & $20.5\pm0.9$ & $3.47\pm0.58$ & $0.96\pm0.14$ & $11.9\pm1.7$ & $4.18\pm0.71$ & $6.9\pm1.3$ \\ \hline %reference
+(iii) w/o freshness inputs ($\xi,\tau,b$) & 5 & $21.6\pm0.5$ & $2.51\pm0.34$ & $0.45\pm0.05$ & $10.1\pm0.7$ & $3.94\pm0.55$ & $8.3\pm1.5$ \\ \hline %reference
+(iv) $H=1$ ($d_k=512$) & 3 & $21.2\pm0.6$ & $2.86\pm0.41$ & $0.47\pm0.06$ & $10.4\pm0.8$ & $3.42\pm0.49$ & $5.7\pm1.0$ \\ \hline %reference
+(iv) $H=4$ ($d_k=128$) & 3 & $21.7\pm0.4$ & $2.43\pm0.30$ & $0.44\pm0.05$ & $9.9\pm0.6$ & $2.96\pm0.36$ & $4.8\pm0.8$ \\ \hline %reference
+(v) MQA+Distribution (parameter-matched) & 5 & $20.7\pm0.6$ & $4.28\pm0.52$ & $0.58\pm0.07$ & $11.2\pm0.9$ & $5.12\pm0.64$ & $7.6\pm1.2$ \\ \hline %reference
+\end{tabular}%
+}
+\end{table*}
+
+Table~\ref{tab:ablation} separates the contributions of the components. Removing MHA produces the largest degradation, increasing spacing RMSE from 2.34 to 6.02~m. Removing the distribution-based action mapping mainly affects smoothness: acceleration STD more than doubles (0.43 to 0.96~m/s$^2$) and spacing RMSE rises by 48\%, with larger seed-to-seed variation. The freshness inputs have little effect under i.i.d. Bernoulli loss (2.51 versus 2.34~m; Welch $p=0.43$), as expected from the negligible probability of stale messages in that channel, but they become decisive under temporally correlated loss: without them, spacing RMSE under GE loss increases from 2.87 to 3.94~m ($p=0.009$, $g=2.0$) and the outage peak spacing error nearly doubles (4.6 to 8.3~m). Head-count sensitivity is modest: a single 512-dimensional head is worse (2.86~m), whereas four and eight heads perform similarly (2.43 and 2.34~m), suggesting saturation beyond four heads at this problem size. The parameter-matched MQA variant is consistently worse than MHA, indicating that the per-head key/value projections, rather than the parameter count, account for the difference. %reference
+
+\begin{figure*}[htbp]
+\centering
+\imageplaceholder{Component and sensitivity ablations}{Include panels for (i) no-MHA, (ii) no-distribution mapping, (iii) freshness on/off evaluated under Bernoulli, GE and outage conditions, (iv) attention-head count $H\in\{1,4,8\}$ (three seeds, descriptive), and (v) matched-budget MHA versus MQA. Show seed-level points with mean and 95\% confidence intervals; keep all non-ablated environment and PPO settings fixed.}
+\caption{Component ablations and hyperparameter sensitivity of the MHA+Distribution framework.}
+\label{fig:ablation}
+\end{figure*}
+
+To test unseen communication severity separately from unseen CAV penetration, policies trained using Bernoulli packet-loss rates $\{10\%,30\%,50\%\}$ are evaluated without retuning at 40\% (interpolation) and 60\% (extrapolation). Cross-channel transfer from Bernoulli to GE is reported separately and is not mislabeled as an unseen-loss-rate test. %reference
+
+At the interpolated 40\% loss rate, the spacing RMSE of MHA+Distribution ($2.68\pm0.35$~m) lies between its values at the trained 30\% and 50\% rates (2.34 and 3.08~m), indicating smooth interpolation. At the extrapolated 60\% rate, the error rises to $3.98\pm0.58$~m, a 29\% increase relative to 50\% loss that is about twice the 15\% steps observed within the trained range. The other learning-based controllers show the same extrapolation penalty (GAT-MAPPO $4.92\pm0.66$~m, +30\%; Distribution-based MAPPO $10.12\pm1.26$~m, +26\%), whereas the $H_\infty$ controller, although operated beyond its 50\% design bound, degrades by only 7\% ($7.21\pm0.44$~m). MHA+Distribution nevertheless retains the lowest absolute error at 60\% loss; the steeper degradation of all learned policies outside the training range is a limitation of learned controllers that model-based designs do not share to the same extent. %reference
+
+\begin{figure*}[htbp]
+\centering
+\imageplaceholder{Training-unseen packet-loss generalization}{Show spacing RMSE and acceleration STD versus Bernoulli loss rate (10/30/50\% trained; 40\% interpolation and 60\% extrapolation held out, marked with open symbols) for $H_\infty$, Distribution-based MAPPO, GAT-MAPPO and MHA+Distribution. Include mean and 95\% confidence intervals across five seeds and shade the training range.}
+\caption{Generalization to packet-loss rates not observed during training.}
+\label{fig:unseen_loss}
+\end{figure*}
+
+\subsection{Computational overhead and real-time feasibility}
+\label{sec:computation}
+
+The MHA actor uses one ego query and $M$ available upstream message tokens. Its attention-score and value-aggregation cost grows linearly with $M$ for a fixed projected width, while the centralized critic is absent during execution. Computational overhead is therefore reported empirically rather than described only as ``lightweight.'' Actor parameter count, MAC/FLOP count, and inference latency are measured for Value-based MAPPO, Distribution-based MAPPO, GAT-MAPPO, MQA+Distribution, and MHA+Distribution on the same platform.
+
+The timing protocol uses batch size one, 100 warm-up forward passes and 10,000 timed forward passes per method, reporting median, 95th-percentile, and 99th-percentile latency. Accelerator synchronization is applied around timed regions when required. The neural forward pass is distinguished from end-to-end sensing/message preprocessing. Measurements are taken on a single thread of a desktop CPU (Intel Core i7-12700, PyTorch 2.1, eager mode) to approximate a resource-constrained onboard processor, with the worst-case $M=8$ upstream tokens. %reference
+
+\begin{table}[htbp]
+\centering
+\caption{Actor Size, Computation and Inference Latency (Batch Size 1, $M=8$)}
+\label{tab:computation}
+\setlength{\tabcolsep}{3pt}
+\renewcommand{\arraystretch}{1.2}
+\resizebox{\linewidth}{!}{%
+\begin{tabular}{|l|c|c|c|c|c|}
+\hline
+\textbf{Actor} & \textbf{Params} & \textbf{MACs} & \textbf{Median (ms)} & \textbf{p95 (ms)} & \textbf{p99 (ms)} \\ \hline
+Value-based MAPPO & 9.2k & 9.0k & 0.036 & 0.041 & 0.058 \\ \hline %reference
+Distribution-based MAPPO & 9.4k & 9.2k & 0.038 & 0.044 & 0.061 \\ \hline %reference
+GAT-MAPPO & 154.0k & 181.4k & 0.142 & 0.163 & 0.214 \\ \hline %reference
+MQA+Distribution & 151.2k & 161.9k & 0.151 & 0.172 & 0.226 \\ \hline %reference
+MHA+Distribution & 156.6k & 197.8k & 0.168 & 0.191 & 0.247 \\ \hline %reference
+\end{tabular}%
+}
+\end{table}
+
+The MHA actor has 156.6k parameters and requires 0.198~MMAC per decision with eight upstream tokens (Table~\ref{tab:computation}). About 75\% of these operations belong to the ego-query projection and the policy MLP, which do not depend on $M$; the $M$-dependent key/value projections and attention account for the remainder. The median actor latency is 0.168~ms (p99 0.247~ms), which is 0.13~ms above Distribution-based MAPPO and 0.026~ms above GAT-MAPPO and below 0.3\% of the 0.1-s control interval even at the 99th percentile. Including message-cache update and token assembly, the end-to-end per-step computation is 0.22~ms (median). Computation is therefore not a limiting factor at this platoon size. The non-attention MAPPO actors are an order of magnitude smaller, which is why the capacity-matched GAT and MQA comparators, rather than the non-attention baselines, are used to attribute gains to the attention representation. %reference
+
+\begin{figure*}[htbp]
+\centering
+\imageplaceholder{Model size, computation and inference latency}{Compare parameter count, MACs, median actor inference latency, p95 and p99 latency for Value-based MAPPO, Distribution-based MAPPO, GAT-MAPPO, MQA+Distribution, and MHA+Distribution on identical hardware and input conditions; add latency versus number of upstream tokens $M\in\{0,\ldots,8\}$ for the attention actors. Indicate the 0.1-s control interval.}
+\caption{Computational overhead and actor inference latency.}
+\label{fig:computation}
+\end{figure*}
+
+\subsection{Scope, scalability, and limitations}
+\label{sec:limitations}
+
+The present study intentionally isolates longitudinal coordination on a straight, single-lane road. The results therefore do not establish generalization to lane changes, merging, intersections, lateral planning, or unrestricted road networks. Likewise, the communication experiments cover Bernoulli erasures, the specified GE burst model, and controlled outages. Explicit communication delay/jitter, distance-dependent physical-layer delivery, broad traffic-density variation, and heterogeneous powertrain dynamics are not independently swept and are therefore not included in the empirical claims. These dimensions are complementary extensions rather than being silently represented by CAV penetration or Krauss randomness. HDV behaviour is represented by a single Krauss parameterization ($\sigma=0.7$) and episodes last 60~s; other car-following models and long-horizon operation are not evaluated.
+
+Two further comparisons are deliberately not included. First, a recurrent MAPPO comparator is omitted. The actor observation already carries the last valid message together with its reception indicator and AoI, i.e., the principal history statistic that a recurrent encoder would otherwise have to retain under erasures is supplied explicitly. Adding recurrence would also change the optimization pipeline (truncated backpropagation through time, hidden-state handling and sequence-chunked minibatches) and thereby confound the representation comparison with a different training procedure. Consequently, the study does not establish whether a learned memory could match explicit freshness features under longer or more structured outages. Second, a full reward-weight sweep is not performed. The two weights are held fixed across all learning-based methods, so all comparisons are made under a common objective, and the evaluation metrics (RMSE, startup, TTC and disturbance amplification) are not the training reward itself. A broader sweep would characterize the efficiency--safety trade-off surface rather than the relative merit of the representations and is left to future work. Head-count sensitivity is likewise limited to three seeds and is interpreted descriptively.
+
+The empirical platoon size is fixed at ten vehicles. CTDE removes the centralized critic from online execution, but this does not establish large-platoon scalability: increasing $N$ can increase per-actor message load, aggregate execution cost, and centralized-critic training complexity. We therefore restrict the scalability claim to decentralized execution in the evaluated ten-vehicle setting and leave larger-platoon training/evaluation as future work.
+
+The present communication threat model is non-malicious. Packet erasures, stale information, burst loss, and outages are reliability impairments; spoofing, intelligent jamming, adversarial message manipulation, and physical-layer security require a different threat model and are outside the current longitudinal-control study. Security-aware communication/control is identified as future work.
+
+The present controller operates at vehicle/platoon level and does not require a digital-twin infrastructure. A future digital-twin layer could support network-level state aggregation, scenario synchronization, large-scale policy evaluation, and corridor-level traffic optimization without changing the scope of the current vehicle-level control contribution.
+
+\section{Conclusion}
+\label{sec:Conclusion}
+This paper presents a refined MADRL-based control framework for CAVs functioning in mixed traffic scenarios, particularly in contexts characterised by unpredictable V2V communication. Incorporating a MHA mechanism into a distribution-based MAPPO framework allows our approach to facilitate dynamic prioritisation of data from neighbouring vehicles. The revised formulation treats communication-impaired execution explicitly as partially observable, separates centralized-critic information from actor-local observations, and exposes packet reception and message age to the MHA encoder. A comprehensive series of simulations was conducted across various scenarios, considering the different penetration rates of CAVs and fluctuations in communication quality. The expanded evaluation covers five independent training seeds, all CAV penetration rates from 10\% to 90\% including zero-shot 10\%/30\% tests, multiple CAV/HDV layouts, Bernoulli loss, a matched-rate Gilbert--Elliott burst channel and a controlled outage, capacity-matched GAT and MQA baselines and a communication-loss-aware $H_\infty$ controller, component ablations, and computational overhead. RMSE and STD are interpreted as tracking-error and local-smoothness metrics, while formal string stability is assessed through $L_2/L_\infty$ disturbance amplification. The findings indicate that the MHA+Distribution MAPPO strategy proposed herein effectively addresses the cold start problem, enhances speed stability and driving smoothness, and maintains appropriate inter-vehicle spacing, thereby surpassing classic analytical controllers (Linear-based and MPC-based CACC) as well as value-based, distribution-based MAPPO and MQA + distribution-based MAPPO benchmarks in the evaluated conditions. It also achieves lower tracking error and faster startup than the capacity-matched GAT-MAPPO and the communication-loss-aware $H_\infty$ CACC. At the anchor condition (50\% CAV, 30\% packet loss), spacing RMSE is reduced by 61\% relative to distribution-based MAPPO and by 20\% relative to GAT-MAPPO, 90\% of the target speed is reached 4.8~s earlier than with distribution-based MAPPO, and the $L_2$ disturbance-amplification ratio remains below one for all controlled CAVs. These gains are not universal: no significant advantage is observed at 10\% penetration, where no upstream CAV message exists; the $H_\infty$ controller retains larger minimum TTC margins and degrades more gracefully beyond the trained loss range; and the explicit freshness inputs matter mainly under bursty loss and outages. Furthermore, evaluations under extreme transient disturbances—specifically the abrupt deceleration of a leading human-driven vehicle—show no collisions in the evaluated event logs rather than providing a formal collision-avoidance guarantee. String-stability conclusions are restricted to the tested conditions for which the reported disturbance-amplification criteria are satisfied. Future research will explore the dynamic reconfiguration of CAV platoons, allowing vehicles to flexibly adjust their platoon composition and ordering based on real-time traffic and communication link quality (e.g., packet loss, latency, outages). Additionally, we will explore safe gap-closing manoeuvrers in which the follower may use brief, safety-bounded acceleration bursts—occasionally faster than the leader—to increase the closing rate without sustained speed overshoot. These advances aim to improve throughput, adaptability, and robustness in complex environments. Future validation will also examine larger platoons, explicit delay and jitter, broader traffic-density regimes, heterogeneous vehicle dynamics, adversarial communication, and digital-twin-assisted network-level evaluation. %reference
+
+\section*{Acknowledgment}
+% Note: IEEE Access typically places this in \tfootnote (added above), but kept here per your request for verbatim text.
+This work was supported by Research Ireland and the Centre for Research Training in Artificial Intelligence (CRT in AI) under Grant No. 18/CRT/6223, and the Science Foundation Ireland CONNECT Research Centre Phase 2, Grant $13/RC/2077\_P2$. For the purpose of Open Access, the author has applied a CC BY public copyright license to any Author Accepted Manuscript version arising from this submission.
+
+\bibliographystyle{IEEEtran}
+
+\bibliography{ref}
+
+% ================= Biographies =================
+% 【IEEE ACCESS格式说明】此部分为 IEEE Access 所需格式，请根据需要替换相应的头像名称和简介。
+
+\begin{IEEEbiographynophoto}{Shuncheng Cai}
+is currently with the School of Computer Science and Statistics, Trinity
+College Dublin, Dublin, Ireland. His earlier research addressed cooperative
+target tracking for multiple unmanned aerial vehicles. His current research
+interests include multi-agent deep reinforcement learning, connected and
+autonomous vehicle control, mixed-traffic systems, and robust decision-making
+under unreliable vehicle-to-vehicle communication.
+\end{IEEEbiographynophoto}
+
+
+\begin{IEEEbiographynophoto}{Mohit Garg}
+received the Ph.D. degree from Trinity College Dublin, Dublin, Ireland. He is
+currently with the School of Computing, National College of Ireland, Dublin,
+Ireland. His research interests include reinforcement learning for autonomous
+vehicles, longitudinal car-following control, cooperative adaptive cruise
+control, mixed-traffic simulation, and the effects of unreliable vehicular
+communication on traffic safety and efficiency.
+\end{IEEEbiographynophoto}
+
+\begin{IEEEbiographynophoto}{Melanie Bouroche}
+received the Ing\'enieur en T\'el\'ecommunications degree from the Grenoble
+Institute of Technology, Grenoble, France, and the M.Sc. degree in networks
+and distributed systems and the Ph.D. degree in computer science from Trinity
+College Dublin, Dublin, Ireland, in 2003 and 2007, respectively. She is
+currently an Assistant Professor with the School of Computer Science and
+Statistics, Trinity College Dublin. Her research interests include distributed
+systems, middleware for smart cities, connected and autonomous vehicle
+coordination, reliable context-aware applications, and intelligent
+transportation systems.
+\end{IEEEbiographynophoto}
+
+\EOD
+
+\end{document}

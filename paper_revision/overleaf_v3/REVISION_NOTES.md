@@ -31,19 +31,43 @@ Requirements: `pip install numpy scipy matplotlib`.
 | Experiment | What to run | Where it appears |
 |---|---|---|
 | 1. Five-seed main comparison | Train Value/Dist/MQA/GAT/MHA with seeds 0–4. Evaluate at 10/30/50% Bernoulli loss (Scenario 1) with 20 common-random-number episodes per seed. Run the Linear, MPC and H∞ controllers on the same realizations. | Tables `robustness_analysis` and `main_multiseed`; Figs. `packet_loss_multiseed` (a,b) and `expanded_baseline`; abstract and conclusion (61%, 20%, 4.8 s) |
-| 2. Learning curves | Log the training return per episode (200 episodes × 218 steps). | Fig. `training_convergence`; the convergence paragraph |
-| 3. GE + outage (inference only) | GE with p_BG=0.20, p_GB=3/35. A 10-s outage of every CAV's nearest-upstream-CAV link, with a 30% Bernoulli background. | Table `ge_outage`; Fig. `ge_robustness` |
+| 2. Learning curves | Log the training return per episode (200 episodes × 218 steps). The figure plots the team return divided by the number of controlled CAVs. | Fig. `training_convergence`; the convergence paragraph |
+| 3. GE + outage (inference only) | GE with p_BG=0.20, p_GB=3/35. A 10-s outage of every CAV's nearest-upstream-CAV link, with a 30% Bernoulli background. Also run the matched outage-free episodes (same seeds and realizations); they are the reference band for the recovery time. | Table `ge_outage`; Fig. `ge_robustness` |
 | 4. Random layouts (inference only) | 10/10/1 layouts at 50/70/90% × 5 realizations × 5 seeds. | Table `penetration`; Fig. `penetration_summary`(a,b); layout paragraph |
 | 5. Core ablations | Retrain w/o distribution mapping and w/o ξ,τ,b (5 seeds each), plus H=1 and H=4 (3 seeds each). Evaluate the frozen models under GE and the outage. Evaluate held-out loss rates 40% and 60% (inference). | Table `ablation`; Figs. `ablation` and `packet_loss_multiseed`(c) |
-| 6. Post-processing and benchmarks | Pulse disturbance ratios at the anchor condition, attention–AoI analysis, and per-step inference latency at the deployed platoon size. | Tables `string_stability` and `computation`; Figs. `string_stability`, `attention_aoi`, `computation` |
+| 6. Post-processing and benchmarks | Pulse disturbance ratios at the anchor condition, from rollouts started at the equilibrium cruise state with the pulse at t = 5 s. Attention–AoI analysis on the nearest upstream CAV token, for CAVs with at least 2 valid tokens. Per-step inference latency at the deployed platoon size. | Tables `string_stability` and `computation`; Figs. `string_stability`, `attention_aoi`, `computation` |
 
 Also verify:
 - Parameter and MAC counts. They are computed from the architecture, assuming a flattened 44-d input for the non-attention actors and no attention output projection.
 - The CPU model named in the text.
 - The Novelty-table row "Reused experiments/figures": check which figures actually appeared in the IV paper.
 - The claim that training uses the Scenario 1–3 orderings.
+- Headway parameters d0 / T_des / T_safe = 7.5 m / 1.0 s / 0.8 s. These were chosen to match your original data: 32–33 m MHA spacing and a safety threshold of about 28 m at 25 m/s in the original text, and about 7.5 m gaps at standstill. Replace them with the values in your code.
+- Actor/critic learning rate 1e-5 with a 43.6k-step budget. This is unusually small for PPO; double-check it against your code.
 
-## Changes in this round
+## Changes in the latest round (consistency audit)
+
+- **Latency figure:** the legend moved above the axes, so it no longer covers the curves.
+- **Consistency with the original data:**
+  - **Headway parameters:** changed from 1.2 s / 1.0 s to 1.0 s / 0.8 s. The desired and soft-safety distances at 25 m/s are now 32.5 m and 27.5 m, which matches the original 32–33 m spacing and about 28 m threshold.
+  - **Attention analysis:** recalibrated to the original heatmap. The drop starts once the age reaches about 1 s (half-decrease 1.1 ± 0.3 s) and recovers within about 1 s. The previous "before T_stale / graded rather than threshold" statement contradicted the heatmap and the original text.
+- **Logic fixes:**
+  - The text claimed H∞ beats both non-attention MAPPO variants at 30% loss. This is false (6.10 vs 6.02 m), so the claim now covers 50% only.
+  - Linear-CACC STD a under GE was 3.02 m/s², which is above a_max = 3. It is now 2.89.
+  - Hedges' g for Distribution-based MAPPO: 6.4, not 6.5.
+  - The pulse at t = 30 s was described as occurring "after the platoon has settled", but MPC, Value-based and Linear settle only after 34–39 s or never. The pulse rollouts now start from equilibrium.
+  - The outage recovery reference was the start-up-affected interval 10–20 s. It is now the matched outage-free episodes.
+  - Ablation variants were said to be "trained at the anchor condition". They now use the same training protocol as the full model.
+  - Variant (ii) was described as a "deterministic" PPO actor. It is now described as a clipped Gaussian.
+  - The attention analysis now excludes CAVs with a single upstream token.
+- **Added clarifications:**
+  - the generalization gap between the training-seen Scenario 1 and the unseen layouts (1–6%);
+  - the plotted training return is per CAV;
+  - the policies are stationary over the 60-s evaluation horizon;
+  - why MQA is slightly slower than GAT despite fewer MACs.
+- The random stream is unchanged, so only the attention section of `figure_data.json` changed.
+
+## Changes in the previous round
 
 - **10% / 30% penetration dropped.** The scope is now restricted to 50–90%, with a principled justification: at 10% there are no upstream CAV messages at all, and at 30% each CAV has at most two, typically separated by long HDV blocks. The requested sentence *"The conclusions of this study are therefore limited to mid-to-high CAV penetration regimes (50%–90%)"* is in §IV-E (Evaluation scenario). The abstract, contributions, limitations and conclusion are scoped the same way. The original weak justification ("cold-start effects are weak and trajectories overlap"), which Reviewer 2 criticised, is gone.
 - **Three additions beyond the minimal package removed** (at your request). The text, tables, figures and highlighting were updated to match:

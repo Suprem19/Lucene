@@ -99,7 +99,7 @@ def fig_convergence():
         ax.fill_between(x, m - h, m + h, color=COL[c], alpha=0.16, lw=0)
         ax.plot(x, m, color=COL[c], lw=lw(c), ls=LS[c], label=NAME[c], zorder=3 if c == "MHA" else 2)
     ax.set_xlabel(r"Environment steps ($\times10^3$)")
-    ax.set_ylabel(r"Episode return ($\times10^3$)")
+    ax.set_ylabel(r"Episode return per CAV ($\times10^3$)")
     ax.set_xlim(0, st[-1])
     ax.legend(handles=handles(["MHA", "GAT", "MQA", "DIST", "VAL"], marker=False), loc="lower right",
               handlelength=2.2)
@@ -250,7 +250,7 @@ def fig_ge():
     ax.grid(axis="y", visible=False)
     ax.set_xlabel("Spacing RMSE (m) at 30% average loss")
     ax.legend(handles=[Line2D([], [], color=INK2, marker="o", mfc="white", ls="", ms=4, label="Bernoulli"),
-                       Line2D([], [], color=INK2, marker="o", ls="", ms=4, label="Gilbert-Elliott")],
+                       Line2D([], [], color=INK2, marker="o", ls="", ms=4, label="Gilbert\u2013Elliott")],
               loc="upper center", bbox_to_anchor=(0.62, 1.0))
     panel(ax, "(a)")
     O = D["outage"]
@@ -284,14 +284,14 @@ def fig_attention():
     ax.plot(x, full.mean(0), color=COL["MHA"], lw=1.6, label="with freshness inputs")
     ax.plot(x, nof.mean(0), color=COL["VAL"], lw=1.2, ls=(0, (4, 2)), label=r"w/o $\xi,\tau,b$")
     ax.axvline(1.0, color=INK2, lw=0.6, ls=(0, (2, 2)))
-    ax.text(1.05, 0.6, r"$T_{\rm stale}$", fontsize=7, color=INK2)
+    ax.text(1.05, 0.76, r"$T_{\rm stale}$", fontsize=7, color=INK2)
     r = np.array(A["rho"]["full"]); r2 = np.array(A["rho"]["nofresh"])
-    ax.text(2.95, 0.53, rf"$\rho={r.mean():.2f}\pm{r.std(ddof=1):.2f}$", ha="right", fontsize=7, color=COL["MHA"])
-    ax.text(2.95, 0.40, rf"$\rho={r2.mean():.2f}\pm{r2.std(ddof=1):.2f}$", ha="right", fontsize=7, color=INK2)
+    ax.text(2.95, 0.77, rf"$\rho={r.mean():.2f}\pm{r.std(ddof=1):.2f}$", ha="right", fontsize=7, color=COL["MHA"])
+    ax.text(2.95, 0.69, rf"$\rho={r2.mean():.2f}\pm{r2.std(ddof=1):.2f}$", ha="right", fontsize=7, color=INK2)
     ax.set_xlim(0, 3)
-    ax.set_ylim(0, 0.65)
+    ax.set_ylim(0, 0.82)
     ax.set_xlabel("Message age of information (s)")
-    ax.set_ylabel("Head-averaged attention mass")
+    ax.set_ylabel("Attention on nearest upstream CAV")
     ax.legend(loc="lower left")
     panel(ax, "(a)")
     bx = axes[1]
@@ -306,7 +306,7 @@ def fig_attention():
         bx.text(k + 0.4, med, f"{med:.2f}", va="center", fontsize=6.8, color=INK2)
     bx.set_xticks([0, 1])
     bx.set_xticklabels([r"fresh ($\tau\leq1$ s)", r"stale ($\tau>1$ s)"])
-    bx.set_ylim(0, 0.9)
+    bx.set_ylim(0, 1.0)
     bx.set_ylabel("Attention on nearest upstream CAV")
     bx.grid(axis="x", visible=False)
     panel(bx, "(b)")
@@ -318,12 +318,12 @@ def fig_attention():
     cx.fill_between(te, m - h, m + h, color=COL["MHA"], alpha=0.18, lw=0)
     cx.plot(te, m, color=COL["MHA"], lw=1.6, label="mean of 5 seeds")
     cx.plot(te, ev[3], color=COL["MHA"], lw=0.8, ls=(0, (3, 1.5)), label="weakest seed")
-    cx.text(5, 0.62, "link outage", ha="center", fontsize=6.8, color=INK2)
+    cx.text(5, 0.78, "link outage", ha="center", fontsize=6.8, color=INK2)
     cx.set_xlim(te[0], te[-1])
-    cx.set_ylim(0, 0.68)
+    cx.set_ylim(0, 0.84)
     cx.set_xlabel("Time from outage onset (s)")
     cx.set_ylabel("Attention on interrupted link")
-    cx.legend(loc="lower right")
+    cx.legend(loc="center", bbox_to_anchor=(0.5, 0.55))
     panel(cx, "(c)")
     del main
     fig.tight_layout(w_pad=1.2)
@@ -415,7 +415,7 @@ def fig_ablation():
 # --------------------------------------------------- F9 computation --------
 def fig_computation():
     Lt = D["latency"]
-    fig, ax = plt.subplots(figsize=(W1, 2.3))
+    fig, ax = plt.subplots(figsize=(W1, 2.55))
     for c in ["VAL", "DIST", "GAT", "MQA", "MHA"]:
         v = np.sort(np.array(Lt["samples_ms"][c]))
         y = np.arange(1, v.size + 1) / v.size
@@ -429,7 +429,11 @@ def fig_computation():
     ax.xaxis.set_minor_formatter(NullFormatter())
     ax.set_xlabel(r"Actor latency per decision (ms, batch 1, $M=8$)")
     ax.set_ylabel("Empirical CDF")
-    ax.legend(loc="lower right")
+    ax.set_ylim(0, 1.02)
+    # legend above the axes so that no curve is covered
+    ax.legend(handles=handles(["MHA", "MQA", "GAT", "DIST", "VAL"]), loc="lower left",
+              bbox_to_anchor=(-0.02, 1.01), ncol=2, handlelength=2.0, columnspacing=1.0,
+              handletextpad=0.4, borderaxespad=0.0)
     save(fig, "fig_computation")
 
 

@@ -139,9 +139,9 @@ def fig_expanded():
 # ---------------------------------------------------- F3 penetration -------
 def fig_penetration():
     P = D["penetration"]
-    pens = [50, 60, 70, 80, 90]
-    held = {60, 80}
-    fig, (ax, bx) = plt.subplots(1, 2, figsize=(W2, 2.4), gridspec_kw={"width_ratios": [1, 1.25]})
+    pens = [50, 70, 90]
+    held = set()
+    fig, (ax, bx) = plt.subplots(1, 2, figsize=(W2, 2.4), gridspec_kw={"width_ratios": [1, 1.1]})
     for p in held:
         ax.axvspan(p - 3.5, p + 3.5, color="#f1f0ec", lw=0, zorder=0)
         ax.text(p, 7.1, "held-out", ha="center", va="bottom", fontsize=6.5, color=INK2)
@@ -153,10 +153,10 @@ def fig_penetration():
             ax.errorbar(p, mu, yerr=h, color=COL[c], lw=0.9, capsize=0, zorder=3)
             ax.scatter(p, mu, marker=MK[c], s=22 if c == "MHA" else 16, zorder=4,
                        facecolor="white" if p in held else COL[c], edgecolor=COL[c], lw=0.9)
-        ax.text(91.5, mus[-1], SHORT[c], va="center", fontsize=7, color=INK)
+        ax.text(92.0, mus[-1], SHORT[c], va="center", fontsize=7, color=INK)
     ax.set_xticks(pens)
     ax.set_xticklabels([f"{p}%" for p in pens])
-    ax.set_xlim(46, 97)
+    ax.set_xlim(44, 99)
     ax.set_ylim(0, 7.6)
     ax.set_xlabel("CAV penetration")
     ax.set_ylabel("Spacing RMSE (m)")
@@ -181,8 +181,7 @@ def fig_penetration():
     bx.set_xlim(-0.55, len(pens) - 0.45)
     bx.set_ylabel("Layout-level spacing RMSE (m)")
     bx.legend(handles=[Line2D([], [], color=COL[c], marker="s", ls="", ms=4, label=NAME[c])
-                       for c in ["DIST", "GAT", "MHA"]], loc="upper right", ncol=3, handletextpad=0.2,
-              columnspacing=0.8)
+                       for c in ["DIST", "GAT", "MHA"]], loc="upper right", ncol=1, handletextpad=0.2)
     bx.set_ylim(0, 9.2)
     panel(bx, "(b)")
     fig.tight_layout(w_pad=1.5)
@@ -416,7 +415,7 @@ def fig_ablation():
 # --------------------------------------------------- F9 computation --------
 def fig_computation():
     Lt = D["latency"]
-    fig, (ax, bx) = plt.subplots(1, 2, figsize=(W2, 2.3))
+    fig, ax = plt.subplots(figsize=(W1, 2.3))
     for c in ["VAL", "DIST", "GAT", "MQA", "MHA"]:
         v = np.sort(np.array(Lt["samples_ms"][c]))
         y = np.arange(1, v.size + 1) / v.size
@@ -431,23 +430,6 @@ def fig_computation():
     ax.set_xlabel(r"Actor latency per decision (ms, batch 1, $M=8$)")
     ax.set_ylabel("Empirical CDF")
     ax.legend(loc="lower right")
-    panel(ax, "(a)")
-    S = Lt["scaling"]; M = np.array(S["M"])
-    for c in ["DIST", "GAT", "MQA", "MHA"]:
-        med, p95 = np.array(S["median_ms"][c]), np.array(S["p95_ms"][c])
-        bx.errorbar(M, med, yerr=[np.zeros_like(med), p95 - med], color=COL[c], lw=lw(c), ls=LS[c],
-                    marker=MK[c], ms=3.6, mfc=COL[c], mec="white", mew=0.4, capsize=0, elinewidth=0.7)
-        bx.text(M[-1] * 1.12, med[-1], SHORT[c], va="center", fontsize=7)
-    bx.set_xscale("log", base=2)
-    bx.set_xticks(M)
-    bx.set_xticklabels([str(m) for m in M])
-    bx.set_xlim(3.4, 110)
-    bx.set_ylim(0, 0.46)
-    bx.set_xlabel(r"Upstream token slots $M$")
-    bx.set_ylabel("Median latency (ms), whisker: p95")
-    bx.text(3.8, 0.43, "control interval: 100 ms", fontsize=6.8, color=INK2)
-    panel(bx, "(b)")
-    fig.tight_layout(w_pad=1.5)
     save(fig, "fig_computation")
 
 

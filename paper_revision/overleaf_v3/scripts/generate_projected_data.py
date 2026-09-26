@@ -294,6 +294,14 @@ lat["scaling"] = {"M": M, "median_ms": SCAL,
                   "p95_ms": {c: [round(x * 1.14, 4) for x in v] for c, v in SCAL.items()},
                   "macs_k_MHA": [round((148624 + 6144 * m) / 1000, 1) for m in M]}
 
+# The 60%/80% penetration entries and the token-slot scaling benchmark are generated
+# only so that the random stream (and hence every other projected value) stays
+# unchanged; they are not part of the manuscript and are dropped here.
+for p in ("60", "80"):
+    pen["seed"].pop(p)
+    pen["layout"].pop(p)
+lat.pop("scaling")
+
 data = {"_note": "PROJECTED placeholder data - replace with measured results before submission",
         "loss": loss, "anchor": anchor, "convergence": conv, "penetration": pen,
         "ge": ge, "outage": outage, "attention": att, "string_stability": ss,
